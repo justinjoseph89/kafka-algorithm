@@ -2,12 +2,6 @@ package com.kafka.consumers.utils;
 
 import java.util.Properties;
 
-import org.apache.kafka.clients.consumer.ConsumerConfig;
-import org.apache.kafka.clients.producer.ProducerConfig;
-import org.apache.kafka.common.serialization.Serdes;
-
-import io.confluent.kafka.serializers.KafkaAvroDecoder;
-
 public class KafkaUtilities {
 
 	/**
@@ -19,7 +13,7 @@ public class KafkaUtilities {
 		props.put("bootstrap.servers", "localhost:9092");
 		props.put("group.id", "GroupID" + System.currentTimeMillis());
 		props.put("auto.offset.reset", "earliest");
-		props.put("schema.registry.url", "http://10.94.0.5:8081/");
+		props.put("schema.registry.url", "http://localhost:8081/");
 		props.put("key.deserializer", "org.apache.kafka.common.serialization.StringDeserializer");
 		props.put("value.deserializer", "io.confluent.kafka.serializers.KafkaAvroDeserializer");
 		return props;
@@ -38,6 +32,7 @@ public class KafkaUtilities {
 		props.put("value.deserializer", "org.apache.kafka.common.serialization.StringDeserializer");
 		return props;
 	}
+
 	/**
 	 * @param consumerID
 	 * @return Properties with kafka details
@@ -54,7 +49,7 @@ public class KafkaUtilities {
 
 	public static Properties getKafkaAvroProducerProperties() {
 		Properties props = new Properties();
-		 props.put("bootstrap.servers", "localhost:9092");
+		props.put("bootstrap.servers", "localhost:9092");
 		props.put("key.serializer", "io.confluent.kafka.serializers.KafkaAvroSerializer");
 		props.put("value.serializer", "io.confluent.kafka.serializers.KafkaAvroSerializer");
 		props.put("schema.registry.url", "http://localhost:8081/");
@@ -68,6 +63,7 @@ public class KafkaUtilities {
 		props.put("value.serializer", "org.apache.kafka.common.serialization.StringSerializer");
 		return props;
 	}
+
 	public static Properties getKafkaSimpleProducerPropertiesLong() {
 		Properties props = new Properties();
 		props.put("bootstrap.servers", "localhost:9092");

@@ -1,0 +1,161 @@
+package com.kafka.consumers.utils;
+
+import java.io.IOException;
+import java.util.List;
+import java.util.TreeSet;
+import java.util.concurrent.CountDownLatch;
+
+import org.apache.zookeeper.CreateMode;
+import org.apache.zookeeper.KeeperException;
+import org.apache.zookeeper.WatchedEvent;
+import org.apache.zookeeper.Watcher;
+import org.apache.zookeeper.Watcher.Event.KeeperState;
+import org.apache.zookeeper.ZooDefs.Ids;
+import org.apache.zookeeper.ZooKeeper;
+import org.apache.zookeeper.data.Stat;
+
+public class ZkConnect {
+	private ZooKeeper zk;
+	private CountDownLatch connSignal = new CountDownLatch(0);
+	private String znodeName;
+	private final String znodeNamePrefix = "/kafka-algo_";
+	private final String zookeeperHost = "192.168.56.101";
+
+	/**
+	 * @param topicName
+	 * @param reset
+	 */
+	public ZkConnect(final String topicName, final boolean reset) {
+		this.znodeName = this.znodeNamePrefix + topicName;
+		this.zk = this.connect(this.zookeeperHost);
+		createNode(0L, reset);
+	}
+
+	/**
+	 * Create Zookeeper client object to get apis
+	 * 
+	 * @param host
+	 * @return
+	 */
+	private ZooKeeper connect(String host) {
+		try {
+			zk = new ZooKeeper(host, 3000, new Watcher() {
+				public void process(WatchedEvent event) {
+					if (event.getState() == KeeperState.SyncConnected) {
+						connSignal.countDown();
+					}
+				}
+			});
+			connSignal.await();
+		} catch (IOException e) {
+			e.printStackTrace();
+		} catch (InterruptedException e) {
+			e.printStackTrace();
+		}
+		return zk;
+	}
+
+	/**
+	 * @throws InterruptedException
+	 */
+	public void close() throws InterruptedException {
+		zk.close();
+	}
+
+	/**
+	 * Create the node with default data in the initial stage.
+	 * 
+	 * @param path
+	 * @param data
+	 * @param reset
+	 */
+	private void createNode(long data, boolean reset) {
+		try {
+			Stat nodeExistence = zk.exists(this.znodeName, true);
+
+			if (nodeExistence != null) {
+				if (reset = true) {
+
+					zk.delete(this.znodeName, zk.exists(this.znodeName, true).getVersion());
+					zk.create(this.znodeName, String.valueOf(data).getBytes(), Ids.OPEN_ACL_UNSAFE,
+							CreateMode.PERSISTENT);
+				} else {
+					System.out.println("Node Already Present. Do Nothing. Go For Update.");
+				}
+			} else {
+				zk.create(this.znodeName, String.valueOf(data).getBytes(), Ids.OPEN_ACL_UNSAFE, CreateMode.PERSISTENT);
+
+			}
+		} catch (KeeperException | InterruptedException e) {
+			e.printStackTrace();
+		}
+	}
+
+	/**
+	 * @param data
+	 * @throws Exception
+	 */
+	public void updateNode(long data) {
+		try {
+			zk.setData(this.znodeName, String.valueOf(data).getBytes(), zk.exists(this.znodeName, true).getVersion());
+		} catch (KeeperException | InterruptedException e) {
+			e.printStackTrace();
+		}
+	}
+
+	/**
+	 * @throws Exception
+	 */
+	public void deleteNode() throws Exception {
+		zk.delete(this.znodeName, zk.exists(this.znodeName, true).getVersion());
+	}
+
+	/**
+	 * @return
+	 * @throws InterruptedException
+	 * @throws KeeperException
+	 * @throws Exception
+	 */
+	@SuppressWarnings("unused")
+	@Deprecated
+	private byte[] getData() throws KeeperException, InterruptedException {
+		return zk.getData(this.znodeName, true, zk.exists(this.znodeName, true));
+	}
+
+	/**
+	 * @param zNode
+	 * @return byte of data in the znode
+	 * @throws InterruptedException
+	 * @throws KeeperException
+	 * @throws Exception
+	 */
+	private byte[] getDataFromPath(String zNode) throws KeeperException, InterruptedException {
+		return zk.getData(zNode, true, zk.exists(zNode, true));
+	}
+
+	/**
+	 * This is to find the minimum data in the each topic
+	 * 
+	 * @return minimumTimestamp
+	 * @throws Exception
+	 */
+	public Long getMinimum() {
+		TreeSet<Long> treeSet = new TreeSet<Long>();
+		List<String> zNodes;
+		try {
+			zNodes = zk.getChildren("/", true);
+			for (String zNode : zNodes) {
+				if (zNode.startsWith("kafka-algo_")) {
+					String data = new String(getDataFromPath("/" + zNode));
+					treeSet.add(Long.parseLong(data));
+				}
+			}
+		} catch (KeeperException | InterruptedException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+		}
+
+		return treeSet.first();
+	}
+
+}
