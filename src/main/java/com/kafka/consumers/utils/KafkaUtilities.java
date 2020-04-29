@@ -19,7 +19,7 @@ public class KafkaUtilities {
 		props.put("bootstrap.servers", "localhost:9092");
 		props.put("group.id", "GroupID" + System.currentTimeMillis());
 		props.put("auto.offset.reset", "earliest");
-		props.put("schema.registry.url", "http://10.94.0.5:8081/");
+		props.put("schema.registry.url", "http://localhost:8081/");
 		props.put("key.deserializer", "org.apache.kafka.common.serialization.StringDeserializer");
 		props.put("value.deserializer", "io.confluent.kafka.serializers.KafkaAvroDeserializer");
 		return props;
