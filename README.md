@@ -1,5 +1,6 @@
 # kafka-algorithm
-Create an app to reduce the speed of processing of less data topics compared with the huge topics
+Create an app to reduce the speed of processing of less data topics compared with the huge topics. 
+Removed the logic of compaction topic as it is not giving different output.
 
 ## Important
 If you are trying to run this application, you should consider few things before starting:
