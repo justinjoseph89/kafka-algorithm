@@ -16,6 +16,8 @@ public class TimeSyncLatest {
 	}
 
 	public long getMaximumTime() {
+		KafkaConsumer<String, String> consumer = new KafkaConsumer<>(
+				KafkaUtilities.getKafkaJsonConsumerProperties(System.currentTimeMillis()));
 		consumer.subscribe(Collections.singletonList("input_topic_1"));
 		consumer.poll(Duration.ofMillis(1000));
 
@@ -42,7 +44,6 @@ public class TimeSyncLatest {
 			});
 
 		} catch (Exception e) {
-			System.out.println("Try while exception");
 			KafkaConsumer<String, Long> consumer = new KafkaConsumer<>(
 					KafkaUtilities.getKafkaJsonConsumerPropertiesLong(System.currentTimeMillis()));
 			consumer.subscribe(Collections.singletonList("time_sync"));
