@@ -8,6 +8,7 @@ import org.apache.kafka.clients.consumer.KafkaConsumer;
 import org.apache.kafka.clients.producer.KafkaProducer;
 import org.apache.kafka.clients.producer.ProducerRecord;
 
+import com.kafka.consumers.utils.ConsumerGroupLag;
 import com.kafka.consumers.utils.KafkaUtilities;
 import com.kafka.consumers.utils.ZkConnect;
 
@@ -23,8 +24,11 @@ public class KStreamConsumerProducer {
 		// performance
 		ZkConnect zk = new ZkConnect("input_topic_2", true);
 
+		long groupId = System.currentTimeMillis();
 		KafkaConsumer<String, String> consumer = new KafkaConsumer<>(
-				KafkaUtilities.getKafkaJsonConsumerProperties(System.currentTimeMillis()));
+				KafkaUtilities.getKafkaJsonConsumerProperties(groupId));
+		ConsumerGroupLag<String, String> consumerLag = new ConsumerGroupLag<>(consumer);
+
 		consumer.subscribe(java.util.Arrays.asList("input_topic_2"));
 
 		// This should be replaced by the internal apis of context.forward for better
@@ -35,7 +39,7 @@ public class KStreamConsumerProducer {
 
 			ConsumerRecords<String, String> records = consumer.poll(Duration.ofMillis(10000));
 			for (ConsumerRecord<String, String> rec : records) {
-				messageSendRecursive(rec, producer, zk);
+				messageSendRecursive(rec, producer, zk, consumerLag, groupId);
 			}
 
 		}
@@ -47,11 +51,20 @@ public class KStreamConsumerProducer {
 	 * @param zk
 	 * @throws InterruptedException
 	 */
-	private static void messageSendRecursive(ConsumerRecord<String, String> rec, KafkaProducer<String, String> producer,
-			ZkConnect zk) throws InterruptedException {
+	private static void messageSendRecursive(final ConsumerRecord<String, String> rec,
+			final KafkaProducer<String, String> producer, final ZkConnect zk,
+			final ConsumerGroupLag<String, String> consumerLag, final long groupId) throws InterruptedException {
+
+		long lag = consumerLag.getConsumerGroupLag(String.valueOf(groupId));
 
 		if (leadTime <= smallDelta) {
-			leadTime = rec.timestamp() - maxTime;
+
+			if (lag == 0) {
+				leadTime = 0;
+			} else {
+				leadTime = rec.timestamp() - maxTime;
+			}
+
 			if (leadTime <= smallDelta) {
 				producer.send(new ProducerRecord<String, String>("output_topic_2", rec.key(), rec.value()));
 			}
@@ -61,14 +74,14 @@ public class KStreamConsumerProducer {
 			zk.updateNode(maxTime);
 			System.out.println(" ---message send to time_sync");
 
-			while (zk.getMinimum() < maxTime) {
+			while (zk.getMinimum() < maxTime || lag >= smallDelta) {
 				Thread.sleep(1000);
 				System.out.println(" ---going to sleep for 10 sec :" + zk.getMinimum() + " -- " + maxTime);
 
 			}
 			maxTime = maxTime + delta;
 			leadTime = 0;
-			messageSendRecursive(rec, producer, zk);
+			messageSendRecursive(rec, producer, zk, consumerLag, lag);
 
 		}
 
