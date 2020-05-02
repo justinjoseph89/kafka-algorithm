@@ -1,41 +1,38 @@
 package com.kafka.consumers.utils;
 
 import java.util.Collection;
-import java.util.Collections;
 import java.util.HashMap;
 import java.util.Iterator;
 import java.util.Map;
 import java.util.Map.Entry;
 import java.util.Properties;
+import java.util.TreeSet;
 import java.util.concurrent.ExecutionException;
-import java.util.concurrent.TimeUnit;
-import java.util.concurrent.TimeoutException;
-import java.util.function.Consumer;
-import java.util.stream.Collectors;
 
-import org.apache.kafka.clients.CommonClientConfigs;
-import org.apache.kafka.clients.admin.Admin;
 import org.apache.kafka.clients.admin.AdminClient;
-import org.apache.kafka.clients.admin.ListConsumerGroupOffsetsResult;
-import org.apache.kafka.clients.consumer.ConsumerConfig;
+import org.apache.kafka.clients.admin.ConsumerGroupListing;
 import org.apache.kafka.clients.consumer.KafkaConsumer;
 import org.apache.kafka.clients.consumer.OffsetAndMetadata;
 import org.apache.kafka.common.TopicPartition;
-import org.apache.kafka.common.serialization.StringDeserializer;
+import static com.kafka.consumers.utils.Constants.GROUPID_PREFIX;
+import static com.kafka.consumers.utils.Constants.BROKER_LIST;;
 
+/**
+ * @author justin
+ *
+ * @param <K>
+ * @param <V>
+ */
 public class ConsumerGroupLag<K, V> {
 	private KafkaConsumer<K, V> consumer;
-	private final String brokers = "192.168.56.101:9092";
-	AdminClient client;
+	private AdminClient client;
 
 	/**
 	 * @param consumer
 	 */
 	public ConsumerGroupLag(KafkaConsumer<K, V> consumer) {
 		this.consumer = consumer;
-		Properties props = new Properties();
-		props.put("bootstrap.servers", brokers);
-		this.client = AdminClient.create(props);
+		this.client = AdminClient.create(kafkaProperties());
 	}
 
 	/**
@@ -43,7 +40,7 @@ public class ConsumerGroupLag<K, V> {
 	 */
 	private Properties kafkaProperties() {
 		Properties props = new Properties();
-		props.put("bootstrap.servers", brokers);
+		props.put("bootstrap.servers", BROKER_LIST);
 		return props;
 	}
 
@@ -55,14 +52,37 @@ public class ConsumerGroupLag<K, V> {
 	 */
 	private Map<TopicPartition, OffsetAndMetadata> getOffsetMetadata(String groupId)
 			throws InterruptedException, ExecutionException {
-		System.out.println(client.listConsumerGroups().all());
-		System.out.println(this.client.listConsumerGroupOffsets(groupId).partitionsToOffsetAndMetadata());
 		return this.client.listConsumerGroupOffsets(groupId).partitionsToOffsetAndMetadata().get();
 	}
 
 	/**
-	 * @param partitionInfo
+	 * @param groupIdStart
 	 * @return
+	 * @throws InterruptedException
+	 * @throws ExecutionException
+	 */
+	@SuppressWarnings("unused")
+	@Deprecated
+	private Map<TopicPartition, OffsetAndMetadata> getGroupOffsetMetadata(String groupIdStart)
+			throws InterruptedException, ExecutionException {
+		Map<TopicPartition, OffsetAndMetadata> offsetMetadataMap = new HashMap<TopicPartition, OffsetAndMetadata>();
+		Collection<ConsumerGroupListing> allGroupResults = this.client.listConsumerGroups().all().get();
+		Iterator<ConsumerGroupListing> itsGroup = allGroupResults.iterator();
+		while (itsGroup.hasNext()) {
+			ConsumerGroupListing consumerGroupListing = (ConsumerGroupListing) itsGroup.next();
+			String groupId = consumerGroupListing.groupId();
+			if (groupId.startsWith(groupIdStart)) {
+				offsetMetadataMap
+						.putAll(this.client.listConsumerGroupOffsets(groupId).partitionsToOffsetAndMetadata().get());
+			}
+
+		}
+		return offsetMetadataMap;
+	}
+
+	/**
+	 * @param partitionInfo
+	 * @return list of end offsets for a partition in topic
 	 */
 	private Map<TopicPartition, Long> getPartitionEndOffsets(Collection<TopicPartition> partitionInfo) {
 		return this.consumer.endOffsets(partitionInfo);
@@ -70,7 +90,7 @@ public class ConsumerGroupLag<K, V> {
 
 	/**
 	 * @param groupId
-	 * @return
+	 * @return lag for the consumer group provided
 	 */
 	public long getConsumerGroupLag(String groupId) {
 
@@ -93,6 +113,44 @@ public class ConsumerGroupLag<K, V> {
 			e.printStackTrace();
 		}
 		return totalLag;
+	}
+
+	/**
+	 * @return maximum lag from all the consumer groups that starts with the group
+	 *         id prefix
+	 */
+	public long getMaxConsumerGroupLag() {
+
+		long totalLag = 0L;
+		TreeSet<Long> lagSet = new TreeSet<Long>();
+		try {
+
+			Collection<ConsumerGroupListing> allGroupResults = this.client.listConsumerGroups().all().get();
+			Iterator<ConsumerGroupListing> itsGroup = allGroupResults.iterator();
+			while (itsGroup.hasNext()) {
+				ConsumerGroupListing consumerGroupListing = (ConsumerGroupListing) itsGroup.next();
+				String groupId = consumerGroupListing.groupId();
+				if (groupId.startsWith(GROUPID_PREFIX)) {
+					Map<TopicPartition, OffsetAndMetadata> consumerGroupOffsets = getOffsetMetadata(groupId);
+					Map<TopicPartition, Long> topicEndOffsets = getPartitionEndOffsets(consumerGroupOffsets.keySet());
+					Iterator<Entry<TopicPartition, OffsetAndMetadata>> consumerItr = consumerGroupOffsets.entrySet()
+							.iterator();
+					while (consumerItr.hasNext()) {
+						Entry<TopicPartition, OffsetAndMetadata> partitionData = consumerItr.next();
+						long lag = topicEndOffsets.get(partitionData.getKey()) - partitionData.getValue().offset();
+						if (lag < 0) {
+							lag = 0;
+						}
+						totalLag = totalLag + lag;
+					}
+				}
+				lagSet.add(totalLag);
+			}
+
+		} catch (InterruptedException | ExecutionException e) {
+			e.printStackTrace();
+		}
+		return lagSet.last();
 	}
 
 }

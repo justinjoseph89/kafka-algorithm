@@ -13,21 +13,25 @@ import org.apache.zookeeper.Watcher.Event.KeeperState;
 import org.apache.zookeeper.ZooDefs.Ids;
 import org.apache.zookeeper.ZooKeeper;
 import org.apache.zookeeper.data.Stat;
+import static com.kafka.consumers.utils.Constants.ZOOKEEPER_HOST;
+import static com.kafka.consumers.utils.Constants.ZNODE_PREFIX;;
 
+/**
+ * @author justin
+ *
+ */
 public class ZkConnect {
 	private ZooKeeper zk;
 	private CountDownLatch connSignal = new CountDownLatch(0);
 	private String znodeName;
-	private final String znodeNamePrefix = "/kafka-algo_";
-	private final String zookeeperHost = "192.168.56.101";
 
 	/**
 	 * @param topicName
 	 * @param reset
 	 */
 	public ZkConnect(final String topicName, final boolean reset) {
-		this.znodeName = this.znodeNamePrefix + topicName;
-		this.zk = this.connect(this.zookeeperHost);
+		this.znodeName = ZNODE_PREFIX + topicName;
+		this.zk = this.connect(ZOOKEEPER_HOST);
 		createNode(0L, reset);
 	}
 
@@ -70,12 +74,12 @@ public class ZkConnect {
 	 * @param reset
 	 */
 	private void createNode(long data, boolean reset) {
+		// String znodeName = this.znodeName + "_" + partition;
 		try {
 			Stat nodeExistence = zk.exists(this.znodeName, true);
 
 			if (nodeExistence != null) {
 				if (reset = true) {
-
 					zk.delete(this.znodeName, zk.exists(this.znodeName, true).getVersion());
 					zk.create(this.znodeName, String.valueOf(data).getBytes(), Ids.OPEN_ACL_UNSAFE,
 							CreateMode.PERSISTENT);
@@ -95,7 +99,8 @@ public class ZkConnect {
 	 * @param data
 	 * @throws Exception
 	 */
-	public void updateNode(long data) {
+	public void updateNode(long data, int partition) {
+		// String znodeName = this.znodeName + "_" + partition;
 		try {
 			zk.setData(this.znodeName, String.valueOf(data).getBytes(), zk.exists(this.znodeName, true).getVersion());
 		} catch (KeeperException | InterruptedException e) {
@@ -106,6 +111,7 @@ public class ZkConnect {
 	/**
 	 * @throws Exception
 	 */
+	@Deprecated
 	public void deleteNode() throws Exception {
 		zk.delete(this.znodeName, zk.exists(this.znodeName, true).getVersion());
 	}
@@ -145,17 +151,17 @@ public class ZkConnect {
 		try {
 			zNodes = zk.getChildren("/", true);
 			for (String zNode : zNodes) {
+
 				if (zNode.startsWith("kafka-algo_")) {
 					String data = new String(getDataFromPath("/" + zNode));
 					treeSet.add(Long.parseLong(data));
 				}
 			}
 		} catch (KeeperException | InterruptedException e) {
-			// TODO Auto-generated catch block
 			e.printStackTrace();
 		}
 
-		return treeSet.first();
+		return treeSet.ceiling(100L);
 	}
 
 }
