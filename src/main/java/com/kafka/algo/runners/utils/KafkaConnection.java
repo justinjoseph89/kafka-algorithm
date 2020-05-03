@@ -1,7 +1,8 @@
-package com.kafka.consumers.utils;
+package com.kafka.algo.runners.utils;
+
+import static com.kafka.algo.runners.constants.Constants.BROKER_LIST;
 
 import java.util.Properties;
-import static com.kafka.consumers.utils.Constants.BROKER_LIST;
 
 /**
  * @author justin

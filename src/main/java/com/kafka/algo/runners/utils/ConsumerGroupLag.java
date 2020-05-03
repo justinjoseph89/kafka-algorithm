@@ -1,4 +1,7 @@
-package com.kafka.consumers.utils;
+package com.kafka.algo.runners.utils;
+
+import static com.kafka.algo.runners.constants.Constants.BROKER_LIST;
+import static com.kafka.algo.runners.constants.Constants.GROUPID_PREFIX;
 
 import java.util.Collection;
 import java.util.HashMap;
@@ -13,9 +16,7 @@ import org.apache.kafka.clients.admin.AdminClient;
 import org.apache.kafka.clients.admin.ConsumerGroupListing;
 import org.apache.kafka.clients.consumer.KafkaConsumer;
 import org.apache.kafka.clients.consumer.OffsetAndMetadata;
-import org.apache.kafka.common.TopicPartition;
-import static com.kafka.consumers.utils.Constants.GROUPID_PREFIX;
-import static com.kafka.consumers.utils.Constants.BROKER_LIST;;
+import org.apache.kafka.common.TopicPartition;;
 
 /**
  * @author justin

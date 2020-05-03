@@ -1,4 +1,4 @@
-package com.kafka.consumers.utils;
+package com.kafka.algo.runners.utils;
 
 import java.time.Duration;
 import java.util.Arrays;
@@ -36,7 +36,7 @@ public class KafkaUtils {
 	/**
 	 * @return create a new kafka consumer
 	 */
-	public KafkaConsumer<String, String> createNewKafkaConsumer() {
+	private KafkaConsumer<String, String> createNewKafkaConsumer() {
 		return new KafkaConsumer<String, String>(
 				KafkaConnection.getKafkaJsonConsumerProperties("" + System.currentTimeMillis()));
 	}

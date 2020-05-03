@@ -1,4 +1,8 @@
-package com.kafka.consumers.utils;
+package com.kafka.algo.runners.utils;
+
+import static com.kafka.algo.runners.constants.Constants.ZNODE_PREFIX;
+import static com.kafka.algo.runners.constants.Constants.ZNODE_START;
+import static com.kafka.algo.runners.constants.Constants.ZOOKEEPER_HOST;
 
 import java.io.IOException;
 import java.util.List;
@@ -12,9 +16,7 @@ import org.apache.zookeeper.Watcher;
 import org.apache.zookeeper.Watcher.Event.KeeperState;
 import org.apache.zookeeper.ZooDefs.Ids;
 import org.apache.zookeeper.ZooKeeper;
-import org.apache.zookeeper.data.Stat;
-import static com.kafka.consumers.utils.Constants.ZOOKEEPER_HOST;
-import static com.kafka.consumers.utils.Constants.ZNODE_PREFIX;;
+import org.apache.zookeeper.data.Stat;;
 
 /**
  * @author justin
@@ -30,7 +32,7 @@ public class ZkConnect {
 	 * @param reset
 	 */
 	public ZkConnect(final String topicName, final boolean reset) {
-		this.znodeName = ZNODE_PREFIX + topicName;
+		this.znodeName = ZNODE_PREFIX + ZNODE_START + topicName;
 		this.zk = this.connect(ZOOKEEPER_HOST);
 		createNode(0L, reset);
 	}
@@ -152,7 +154,7 @@ public class ZkConnect {
 			zNodes = zk.getChildren("/", true);
 			for (String zNode : zNodes) {
 
-				if (zNode.startsWith("kafka-algo_")) {
+				if (zNode.startsWith(ZNODE_START)) {
 					String data = new String(getDataFromPath("/" + zNode));
 					treeSet.add(Long.parseLong(data));
 				}
