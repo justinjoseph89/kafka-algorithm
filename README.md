@@ -13,10 +13,8 @@ If you are trying to run this application, you should consider few things before
   - Added the consumer lag property into the algorithm.
   - Generalize functionalities
   - Hardcode the maxTime variable as per your topic data for now, as I need to add the functionality for this in next version.
-  
-  
+  - Approach for multiple partitions.
+
 ## TO DO
 * Avoid using direct APIs, Follow mirror maker code. (This can be done in the end.)
-* Approach for multiple partitions.
-* Generalize functionalities
 * Test feasibility of using consumer lag.
