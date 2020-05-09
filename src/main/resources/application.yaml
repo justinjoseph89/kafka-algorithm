@@ -2,8 +2,8 @@
 kafka:
    appId: kafka-algo-app-1
    bootstrapServers: |
-      192.168.56.101:9092
-   zookeeperHost: 192.168.56.101
+      localhost:9092
+   zookeeperHost: localhost
    defaultKeySerde: String
    defaultValueSerde: String
    appVersion: 45
