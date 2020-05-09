@@ -12,6 +12,8 @@ import org.apache.kafka.clients.consumer.ConsumerRecords;
 import org.apache.kafka.clients.consumer.KafkaConsumer;
 import org.apache.kafka.common.PartitionInfo;
 
+import com.kafka.algo.runner.configreader.KafkaConfigReader;
+
 /**
  * Use the functions in this class to identify the kafka related data
  * 
@@ -20,30 +22,32 @@ import org.apache.kafka.common.PartitionInfo;
  */
 public class KafkaUtils {
 
-	KafkaConsumer<String, String> consumer;
-	String topicName;
-	Map<Integer, Long> topicTimestampMap;
+	final KafkaConsumer<String, String> consumer;
+	final String topicName;
+	final Map<Integer, Long> topicTimestampMap;
+	final KafkaConfigReader configReader;
 
 	/**
 	 * @param topicName
+	 * @param configReader
 	 */
-	public KafkaUtils(String topicName) {
+	public KafkaUtils(final String topicName, final KafkaConfigReader configReader) {
+		this.configReader = configReader;
 		this.consumer = createNewKafkaConsumer();
 		this.topicName = topicName;
 		this.topicTimestampMap = getPartitionsMinimumTime();
 	}
 
 	/**
-	 * @return create a new kafka consumer
+	 * @return
 	 */
 	private KafkaConsumer<String, String> createNewKafkaConsumer() {
 		return new KafkaConsumer<String, String>(
-				KafkaConnection.getKafkaJsonConsumerProperties("" + System.currentTimeMillis()));
+				KafkaConnection.getKafkaJsonConsumerProperties("" + System.currentTimeMillis(), this.configReader));
 	}
 
 	/**
-	 * @return get the map of minimum record time for all partitions in the topic
-	 *         provided in the object creation time
+	 * @return
 	 */
 	private Map<Integer, Long> getPartitionsMinimumTime() {
 		Map<Integer, Long> timestampMap = new HashMap<Integer, Long>();
@@ -63,8 +67,7 @@ public class KafkaUtils {
 	}
 
 	/**
-	 * @return minimum time of records available in the topic provided while
-	 *         creating the object.
+	 * @return
 	 */
 	public long getTopicMinimumTime() {
 		return this.topicTimestampMap.isEmpty() ? 0L : Collections.min(this.topicTimestampMap.values());
@@ -72,24 +75,21 @@ public class KafkaUtils {
 
 	/**
 	 * @param partition
-	 * @return minimum time of records available in the partition provided while
-	 *         creating the object.
+	 * @return
 	 */
 	public long getTopicPartitionMinimumTime(int partition) {
 		return this.topicTimestampMap.containsKey(partition) ? this.topicTimestampMap.get(partition) : 0L;
 	}
 
 	/**
-	 * @return get the list all partition info for the topic given while creating
-	 *         the object
+	 * @return
 	 */
 	private List<PartitionInfo> getPartitionInfo() {
 		return this.consumer.partitionsFor(this.topicName);
 	}
 
 	/**
-	 * @return total number of partition in the topic given while creating the
-	 *         object
+	 * @return
 	 */
 	private int getNumberOfTopicPartition() {
 		return getPartitionInfo().size();

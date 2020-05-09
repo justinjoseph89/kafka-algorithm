@@ -1,9 +1,6 @@
 package com.kafka.algo.runners;
 
-import static com.kafka.algo.runners.constants.Constants.DELTA;
 import static com.kafka.algo.runners.constants.Constants.GROUPID_PREFIX;
-import static com.kafka.algo.runners.constants.Constants.SMALL_DELTA;
-import static com.kafka.algo.runners.constants.Constants.SLEEP_TIME;
 
 import java.time.Duration;
 import org.apache.kafka.clients.consumer.ConsumerRecord;
@@ -12,6 +9,7 @@ import org.apache.kafka.clients.consumer.KafkaConsumer;
 import org.apache.kafka.clients.producer.KafkaProducer;
 import org.apache.kafka.clients.producer.ProducerRecord;
 
+import com.kafka.algo.runner.configreader.KafkaConfigReader;
 import com.kafka.algo.runners.utils.ConsumerGroupLag;
 import com.kafka.algo.runners.utils.KafkaConnection;
 import com.kafka.algo.runners.utils.KafkaUtils;
@@ -27,27 +25,31 @@ public class KafkaAlgoAppRunner {
 	private String inputTopicName;
 	private String outputTopicName;
 	private String groupId;
+	private KafkaConfigReader configReader;
 
-	public KafkaAlgoAppRunner(String inputTopicName, String outputTopicName, String groupIdVersion) {
+	public KafkaAlgoAppRunner(final String inputTopicName, final String outputTopicName,
+			final KafkaConfigReader configReader) {
 		this.inputTopicName = inputTopicName;
 		this.outputTopicName = outputTopicName;
-		this.groupId = GROUPID_PREFIX + groupIdVersion;
+		this.configReader = configReader;
+		this.groupId = GROUPID_PREFIX + this.configReader.getAppVersion() + System.currentTimeMillis();
 	}
 
 	public void start() {
 
-		ZkConnect zk = new ZkConnect(this.inputTopicName, true);
-		KafkaUtils kafkaUtils = new KafkaUtils(this.inputTopicName);
+		final ZkConnect zk = new ZkConnect(this.inputTopicName, true, this.configReader);
+		final KafkaUtils kafkaUtils = new KafkaUtils(this.inputTopicName, this.configReader);
 
 		maxTime = kafkaUtils.getTopicMinimumTime();
 
-		KafkaConsumer<String, String> consumer = new KafkaConsumer<>(
-				KafkaConnection.getKafkaJsonConsumerProperties(this.groupId));
+		final KafkaConsumer<String, String> consumer = new KafkaConsumer<>(
+				KafkaConnection.getKafkaJsonConsumerProperties(this.groupId, this.configReader));
 
-		ConsumerGroupLag<String, String> consumerLag = new ConsumerGroupLag<>(consumer);
+		final ConsumerGroupLag<String, String> consumerLag = new ConsumerGroupLag<String, String>(consumer,
+				this.configReader);
 
-		KafkaProducer<String, String> producer = new KafkaProducer<>(
-				KafkaConnection.getKafkaSimpleProducerProperties());
+		final KafkaProducer<String, String> producer = new KafkaProducer<>(
+				KafkaConnection.getKafkaSimpleProducerProperties(this.configReader));
 
 		consumer.subscribe(java.util.Arrays.asList(this.inputTopicName));
 
@@ -68,12 +70,12 @@ public class KafkaAlgoAppRunner {
 			final KafkaProducer<String, String> producer, final ConsumerGroupLag<String, String> consumerLag,
 			final boolean considerLag, final ZkConnect zk) {
 
-		long recTimestamp = rec.timestamp();
+		final long recTimestamp = rec.timestamp();
 
-		long lag = consumerLag.getConsumerGroupLag(this.groupId);
+		final long lag = consumerLag.getConsumerGroupLag(this.groupId);
 		// long maxLag = consumerLag.getMaxConsumerGroupLag();
 
-		if (leadTime <= SMALL_DELTA) {
+		if (leadTime <= this.configReader.getSmallDeltaValue()) {
 			// consider Lag should be 0 in order to consider leadtime as 0.
 			// since there wont be any lag in the initial consumption
 			if (lag == 0 && considerLag == true) {
@@ -82,12 +84,12 @@ public class KafkaAlgoAppRunner {
 				leadTime = recTimestamp - maxTime;
 			}
 
-			if (leadTime <= SMALL_DELTA) {
+			if (leadTime <= this.configReader.getSmallDeltaValue()) {
 				producer.send(new ProducerRecord<String, String>(outputTopicName, rec.key(), rec.value()));
 			}
 		}
 
-		if (leadTime > SMALL_DELTA) {
+		if (leadTime > this.configReader.getSmallDeltaValue()) {
 
 			zk.updateNode(maxTime, rec.partition());
 
@@ -99,12 +101,12 @@ public class KafkaAlgoAppRunner {
 				// -maxTime- " + maxTime
 				// + " -maxLag- " + maxLag);
 				try {
-					Thread.sleep(SLEEP_TIME);
+					Thread.sleep(this.configReader.getSleepTimeMs());
 				} catch (InterruptedException e) {
 					e.printStackTrace();
 				}
 			}
-			maxTime = maxTime + DELTA;
+			maxTime = maxTime + this.configReader.getDeltaValue();
 			leadTime = 0;
 			messageSendRecursive(rec, producer, consumerLag, considerLag, zk);
 

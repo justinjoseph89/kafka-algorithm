@@ -2,7 +2,6 @@ package com.kafka.algo.runners.utils;
 
 import static com.kafka.algo.runners.constants.Constants.ZNODE_PREFIX;
 import static com.kafka.algo.runners.constants.Constants.ZNODE_START;
-import static com.kafka.algo.runners.constants.Constants.ZOOKEEPER_HOST;
 
 import java.io.IOException;
 import java.util.List;
@@ -16,7 +15,9 @@ import org.apache.zookeeper.Watcher;
 import org.apache.zookeeper.Watcher.Event.KeeperState;
 import org.apache.zookeeper.ZooDefs.Ids;
 import org.apache.zookeeper.ZooKeeper;
-import org.apache.zookeeper.data.Stat;;
+import org.apache.zookeeper.data.Stat;
+
+import com.kafka.algo.runner.configreader.KafkaConfigReader;;
 
 /**
  * @author justin
@@ -26,14 +27,17 @@ public class ZkConnect {
 	private ZooKeeper zk;
 	private CountDownLatch connSignal = new CountDownLatch(0);
 	private String znodeName;
+	private KafkaConfigReader configReader;
 
 	/**
 	 * @param topicName
 	 * @param reset
+	 * @param configReader
 	 */
-	public ZkConnect(final String topicName, final boolean reset) {
-		this.znodeName = ZNODE_PREFIX + ZNODE_START + topicName;
-		this.zk = this.connect(ZOOKEEPER_HOST);
+	public ZkConnect(final String topicName, final boolean reset, final KafkaConfigReader configReader) {
+		this.configReader = configReader;
+		this.znodeName = ZNODE_PREFIX + ZNODE_START + configReader.getAppVersion() + topicName;
+		this.zk = this.connect(configReader.getZookeeperHost());
 		createNode(0L, reset);
 	}
 
@@ -153,8 +157,8 @@ public class ZkConnect {
 		try {
 			zNodes = zk.getChildren("/", true);
 			for (String zNode : zNodes) {
-
-				if (zNode.startsWith(ZNODE_START)) {
+				if (zNode.startsWith(ZNODE_START + this.configReader.getAppVersion())) {
+					System.out.println(zNode);
 					String data = new String(getDataFromPath("/" + zNode));
 					treeSet.add(Long.parseLong(data));
 				}
@@ -163,7 +167,7 @@ public class ZkConnect {
 			e.printStackTrace();
 		}
 
-		return treeSet.ceiling(100L);
+		return treeSet.isEmpty() ? 0 : treeSet.ceiling(100L);
 	}
 
 }

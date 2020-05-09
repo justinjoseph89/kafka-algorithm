@@ -1,0 +1,17 @@
+#please note : no '-' is used
+kafka:
+   appId: kafka-algo-app-1
+   bootstrapServers: |
+      192.168.56.101:9092
+   zookeeperHost: 192.168.56.101
+   defaultKeySerde: String
+   defaultValueSerde: String
+   appVersion: 45
+   appDeltaValue: 100
+   appSmallDeltaValue: 1
+   appSleepTimeMs: 100
+   topics:
+      input-topic-1: input-topic-1
+      input-topic-2: input-topic-2
+      output-topic-1: output-topic-1
+      output-topic-2: output-topic-2
