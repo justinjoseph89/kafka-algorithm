@@ -13,15 +13,14 @@ public class KafkaProperties {
 	private String bootstrapServers = "localhost:9092";
 	private String zookeeperHost = "localhost";
 	private String defaultKeySerde = "String";
-	private String defaultValueSerde = "JsonNode";
+	private String defaultValueSerde = "String";
 	private String appVersion = "0";
 	private long appDeltaValue = 100L;
 	private long appSmallDeltaValue = 1L;
 	private long appSleepTimeMs = 100;
+	private String schemaRegistyUrl = "http://localhost:8081/";
+	private String autoOffsetReset = "earliest";
 	private Map<String, String> topics = new HashMap<>();
-
-	public KafkaProperties() {
-	}
 
 	public String getAppId() {
 		return appId;
@@ -93,6 +92,22 @@ public class KafkaProperties {
 
 	public void setAppSleepTimeMs(long appSleepTimeMs) {
 		this.appSleepTimeMs = appSleepTimeMs;
+	}
+
+	public String getSchemaRegistyUrl() {
+		return schemaRegistyUrl;
+	}
+
+	public void setSchemaRegistyUrl(String schemaRegistyUrl) {
+		this.schemaRegistyUrl = schemaRegistyUrl;
+	}
+
+	public String getAutoOffsetReset() {
+		return autoOffsetReset;
+	}
+
+	public void setAutoOffsetReset(String autoOffsetReset) {
+		this.autoOffsetReset = autoOffsetReset;
 	}
 
 	public Map<String, String> getTopics() {

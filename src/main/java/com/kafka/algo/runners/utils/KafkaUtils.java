@@ -39,11 +39,13 @@ public class KafkaUtils {
 	}
 
 	/**
+	 * @param <K>
+	 * @param <V>
 	 * @return
 	 */
-	private KafkaConsumer<String, String> createNewKafkaConsumer() {
-		return new KafkaConsumer<String, String>(
-				KafkaConnection.getKafkaJsonConsumerProperties("" + System.currentTimeMillis(), this.configReader));
+	private <K, V> KafkaConsumer<K, V> createNewKafkaConsumer() {
+		return new KafkaConsumer<K, V>(
+				KafkaConnection.getKafkaConsumerProperties("" + System.currentTimeMillis(), this.configReader));
 	}
 
 	/**

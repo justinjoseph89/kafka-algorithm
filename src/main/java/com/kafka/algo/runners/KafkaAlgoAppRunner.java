@@ -19,7 +19,7 @@ import com.kafka.algo.runners.utils.ZkConnect;
  * @author justin
  *
  */
-public class KafkaAlgoAppRunner {
+public class KafkaAlgoAppRunner<K, V> {
 	private long maxTime;
 	private long leadTime = 0; // Initial Assignment
 	private String inputTopicName;
@@ -42,23 +42,22 @@ public class KafkaAlgoAppRunner {
 
 		maxTime = kafkaUtils.getTopicMinimumTime();
 
-		final KafkaConsumer<String, String> consumer = new KafkaConsumer<>(
-				KafkaConnection.getKafkaJsonConsumerProperties(this.groupId, this.configReader));
+		final KafkaConsumer<K, V> consumer = new KafkaConsumer<>(
+				KafkaConnection.getKafkaConsumerProperties(this.groupId, this.configReader));
 
-		final ConsumerGroupLag<String, String> consumerLag = new ConsumerGroupLag<String, String>(consumer,
-				this.configReader);
+		final ConsumerGroupLag<K, V> consumerLag = new ConsumerGroupLag<K, V>(consumer, this.configReader);
 
-		final KafkaProducer<String, String> producer = new KafkaProducer<>(
-				KafkaConnection.getKafkaSimpleProducerProperties(this.configReader));
+		final KafkaProducer<K, V> producer = new KafkaProducer<K, V>(
+				KafkaConnection.getKafkaProducerProperties(this.configReader));
 
 		consumer.subscribe(java.util.Arrays.asList(this.inputTopicName));
 
 		boolean considerLag = false;
 
 		while (true) {
-			ConsumerRecords<String, String> records = consumer.poll(Duration.ofMillis(10000));
+			ConsumerRecords<K, V> records = consumer.poll(Duration.ofMillis(10000));
 
-			for (ConsumerRecord<String, String> rec : records) {
+			for (ConsumerRecord<K, V> rec : records) {
 				messageSendRecursive(rec, producer, consumerLag, considerLag, zk);
 			}
 			considerLag = true;
@@ -66,9 +65,8 @@ public class KafkaAlgoAppRunner {
 		}
 	}
 
-	private void messageSendRecursive(final ConsumerRecord<String, String> rec,
-			final KafkaProducer<String, String> producer, final ConsumerGroupLag<String, String> consumerLag,
-			final boolean considerLag, final ZkConnect zk) {
+	private void messageSendRecursive(final ConsumerRecord<K, V> rec, final KafkaProducer<K, V> producer,
+			final ConsumerGroupLag<K, V> consumerLag, final boolean considerLag, final ZkConnect zk) {
 
 		final long recTimestamp = rec.timestamp();
 
@@ -85,7 +83,7 @@ public class KafkaAlgoAppRunner {
 			}
 
 			if (leadTime <= this.configReader.getSmallDeltaValue()) {
-				producer.send(new ProducerRecord<String, String>(outputTopicName, rec.key(), rec.value()));
+				producer.send(new ProducerRecord<K, V>(outputTopicName, rec.key(), rec.value()));
 			}
 		}
 

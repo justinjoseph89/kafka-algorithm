@@ -2,7 +2,12 @@ package com.kafka.algo.runners.utils;
 
 import java.util.Properties;
 
+import org.apache.kafka.clients.consumer.ConsumerConfig;
+import org.apache.kafka.clients.producer.ProducerConfig;
+
 import com.kafka.algo.runner.configreader.KafkaConfigReader;
+import com.kafka.algo.runners.deserializers.KafkaDeserializers;
+import com.kafka.algo.runners.serializers.KafkaSerializers;
 
 /**
  * @author justin
@@ -15,25 +20,40 @@ public class KafkaConnection {
 	 * @param configReader
 	 * @return Properties with kafka details
 	 */
-	public static Properties getKafkaJsonConsumerProperties(final String consumerID,
-			final KafkaConfigReader configReader) {
-		Properties props = new Properties();
-		props.put("bootstrap.servers", configReader.getBootstrapServers());
-		props.put("group.id", consumerID);
-		props.put("auto.offset.reset", "earliest");
-		props.put("key.deserializer", "org.apache.kafka.common.serialization.StringDeserializer");
-		props.put("value.deserializer", "org.apache.kafka.common.serialization.StringDeserializer");
+	public static Properties getKafkaConsumerProperties(final String consumerID, final KafkaConfigReader configReader) {
+		Properties props = getSharedConsumerProperties(configReader);
+		props.put(ConsumerConfig.GROUP_ID_CONFIG, consumerID);
+
 		return props;
 	}
 
 	/**
+	 * @param configReader
+	 * @return common kafka Properties
+	 */
+	private static Properties getSharedConsumerProperties(final KafkaConfigReader configReader) {
+		Properties props = new Properties();
+		props.put(ConsumerConfig.BOOTSTRAP_SERVERS_CONFIG, configReader.getBootstrapServers());
+		props.put(ConsumerConfig.KEY_DESERIALIZER_CLASS_CONFIG, KafkaDeserializers.getKeyDeserializer(configReader));
+		props.put(ConsumerConfig.VALUE_DESERIALIZER_CLASS_CONFIG,
+				KafkaDeserializers.getValueDeserializer(configReader));
+		props.put("schema.registry.url", configReader.getSchemaRegistryUrl());
+		props.put(ConsumerConfig.AUTO_OFFSET_RESET_CONFIG, configReader.getAutoOffsetReset());
+
+		return props;
+
+	}
+
+	/**
+	 * @param configReader
 	 * @return
 	 */
-	public static Properties getKafkaSimpleProducerProperties(final KafkaConfigReader configReader) {
+	public static Properties getKafkaProducerProperties(final KafkaConfigReader configReader) {
 		Properties props = new Properties();
-		props.put("bootstrap.servers", configReader.getBootstrapServers());
-		props.put("key.serializer", "org.apache.kafka.common.serialization.StringSerializer");
-		props.put("value.serializer", "org.apache.kafka.common.serialization.StringSerializer");
+		props.put(ProducerConfig.BOOTSTRAP_SERVERS_CONFIG, configReader.getBootstrapServers());
+		props.put(ProducerConfig.KEY_SERIALIZER_CLASS_CONFIG, KafkaSerializers.getKeySerializer(configReader));
+		props.put(ProducerConfig.VALUE_SERIALIZER_CLASS_CONFIG, KafkaSerializers.getValueSerializer(configReader));
+		props.put("schema.registry.url", configReader.getSchemaRegistryUrl());
 		return props;
 	}
 

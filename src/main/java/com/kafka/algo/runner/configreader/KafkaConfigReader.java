@@ -95,4 +95,18 @@ public class KafkaConfigReader {
 		return this.kafkaConfig.getKafka().getTopics();
 	}
 
+	/**
+	 * @return
+	 */
+	public String getSchemaRegistryUrl() {
+		return this.kafkaConfig.getKafka().getSchemaRegistyUrl();
+	}
+
+	/**
+	 * @return
+	 */
+	public String getAutoOffsetReset() {
+		return this.kafkaConfig.getKafka().getAutoOffsetReset();
+	}
+
 }

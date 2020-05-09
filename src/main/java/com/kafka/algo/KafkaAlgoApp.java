@@ -5,12 +5,12 @@ import com.kafka.algo.runners.KafkaAlgoAppRunner;
 
 public class KafkaAlgoApp {
 
-	public static void main(String[] args) {
+	public static <K, V> void main(String[] args) {
 
 		KafkaConfigReader configReader = new KafkaConfigReader();
 		String inputTopicName = configReader.getTopics().get("input-topic-1");
 		String outputTopicName = configReader.getTopics().get("output-topic-1");
-		KafkaAlgoAppRunner runner = new KafkaAlgoAppRunner(inputTopicName, outputTopicName, configReader);
+		KafkaAlgoAppRunner<K, V> runner = new KafkaAlgoAppRunner<K, V>(inputTopicName, outputTopicName, configReader);
 		runner.start();
 
 	}

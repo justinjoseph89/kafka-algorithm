@@ -2,16 +2,18 @@
 kafka:
    appId: kafka-algo-app-1
    bootstrapServers: |
-      localhost:9092
-   zookeeperHost: localhost
+      192.168.56.101:9092
+   zookeeperHost: 192.168.56.101
    defaultKeySerde: String
-   defaultValueSerde: String
-   appVersion: 45
+   defaultValueSerde: Avro
+   appVersion: 46
    appDeltaValue: 100
    appSmallDeltaValue: 1
    appSleepTimeMs: 100
+   autoOffsetReset: earliest
+   schemaRegistyUrl: http://192.168.56.101:8081/
    topics:
-      input-topic-1: input-topic-1
-      input-topic-2: input-topic-2
-      output-topic-1: output-topic-1
-      output-topic-2: output-topic-2
+      input-topic-1: input-topic-3
+      input-topic-2: input-topic-4
+      output-topic-1: output-topic-3
+      output-topic-2: output-topic-4
