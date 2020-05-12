@@ -1,6 +1,6 @@
 package com.kafka.algo.runners.deserializers;
 
-import com.kafka.algo.runner.configreader.KafkaConfigReader;
+import com.kafka.algo.runners.configreader.KafkaConfigReader;
 
 /**
  * @author justin

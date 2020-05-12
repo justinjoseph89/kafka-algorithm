@@ -17,7 +17,7 @@ import org.apache.zookeeper.ZooDefs.Ids;
 import org.apache.zookeeper.ZooKeeper;
 import org.apache.zookeeper.data.Stat;
 
-import com.kafka.algo.runner.configreader.KafkaConfigReader;;
+import com.kafka.algo.runners.configreader.KafkaConfigReader;;
 
 /**
  * @author justin

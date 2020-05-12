@@ -1,7 +1,7 @@
 package com.kafka.algo;
 
-import com.kafka.algo.runner.configreader.KafkaConfigReader;
 import com.kafka.algo.runners.KafkaAlgoAppRunner;
+import com.kafka.algo.runners.configreader.KafkaConfigReader;
 
 public class KafkaAlgoApp {
 

@@ -9,10 +9,12 @@ import org.apache.kafka.clients.consumer.KafkaConsumer;
 import org.apache.kafka.clients.producer.KafkaProducer;
 import org.apache.kafka.clients.producer.ProducerRecord;
 
-import com.kafka.algo.runner.configreader.KafkaConfigReader;
-import com.kafka.algo.runners.utils.ConsumerGroupLag;
-import com.kafka.algo.runners.utils.KafkaConnection;
-import com.kafka.algo.runners.utils.KafkaUtils;
+import com.kafka.algo.runners.configreader.KafkaConfigReader;
+import com.kafka.algo.runners.consumerutils.ConsumerGroupSourceLag;
+import com.kafka.algo.runners.consumerutils.ConsumerGroupTargetLag;
+import com.kafka.algo.runners.datautils.FieldSelector;
+import com.kafka.algo.runners.kafkautils.KafkaConnection;
+import com.kafka.algo.runners.kafkautils.KafkaUtils;
 import com.kafka.algo.runners.utils.ZkConnect;
 
 /**
@@ -38,19 +40,21 @@ public class KafkaAlgoAppRunner<K, V> {
 	public void start() {
 
 		final ZkConnect zk = new ZkConnect(this.inputTopicName, true, this.configReader);
-		final KafkaUtils kafkaUtils = new KafkaUtils(this.inputTopicName, this.configReader);
+		final KafkaUtils<K, V> kafkaUtils = new KafkaUtils<K, V>(this.inputTopicName, this.configReader);
+		final ConsumerGroupTargetLag<K, V> targetLag = new ConsumerGroupTargetLag<K, V>(this.inputTopicName,
+				this.configReader);
 
 		maxTime = kafkaUtils.getTopicMinimumTime();
 
 		final KafkaConsumer<K, V> consumer = new KafkaConsumer<>(
 				KafkaConnection.getKafkaConsumerProperties(this.groupId, this.configReader));
 
-		final ConsumerGroupLag<K, V> consumerLag = new ConsumerGroupLag<K, V>(consumer, this.configReader);
-
+		final ConsumerGroupSourceLag<K, V> consumerLag = new ConsumerGroupSourceLag<K, V>(consumer, this.configReader);
 		final KafkaProducer<K, V> producer = new KafkaProducer<K, V>(
 				KafkaConnection.getKafkaProducerProperties(this.configReader));
-
 		consumer.subscribe(java.util.Arrays.asList(this.inputTopicName));
+
+		final String fieldNameToConsider = this.configReader.getTopicFields().get(this.inputTopicName);
 
 		boolean considerLag = false;
 
@@ -58,7 +62,7 @@ public class KafkaAlgoAppRunner<K, V> {
 			ConsumerRecords<K, V> records = consumer.poll(Duration.ofMillis(10000));
 
 			for (ConsumerRecord<K, V> rec : records) {
-				messageSendRecursive(rec, producer, consumerLag, considerLag, zk);
+				messageSendRecursive(rec, producer, consumerLag, considerLag, zk, fieldNameToConsider, targetLag);
 			}
 			considerLag = true;
 
@@ -66,12 +70,13 @@ public class KafkaAlgoAppRunner<K, V> {
 	}
 
 	private void messageSendRecursive(final ConsumerRecord<K, V> rec, final KafkaProducer<K, V> producer,
-			final ConsumerGroupLag<K, V> consumerLag, final boolean considerLag, final ZkConnect zk) {
+			final ConsumerGroupSourceLag<K, V> consumerLag, final boolean considerLag, final ZkConnect zk,
+			final String fieldNameToConsider, final ConsumerGroupTargetLag<K, V> targetLag) {
 
-		final long recTimestamp = rec.timestamp();
+		long recTimestamp = FieldSelector.getTimestampFromData(fieldNameToConsider, rec);
 
 		final long lag = consumerLag.getConsumerGroupLag(this.groupId);
-		// long maxLag = consumerLag.getMaxConsumerGroupLag();
+		long maxLag = targetLag.getAnyActiveConsumerLag();
 
 		if (leadTime <= this.configReader.getSmallDeltaValue()) {
 			// consider Lag should be 0 in order to consider leadtime as 0.
@@ -90,14 +95,8 @@ public class KafkaAlgoAppRunner<K, V> {
 		if (leadTime > this.configReader.getSmallDeltaValue()) {
 
 			zk.updateNode(maxTime, rec.partition());
-
 			// here need to think about the implementation of maxLag
-			while (zk.getMinimum() < maxTime) {
-				System.out.println(" going to sleep for 10 sec :" + this.inputTopicName + " -minTime-" + zk.getMinimum()
-						+ " -maxTime- " + maxTime);
-				// System.out.println(" going to sleep for 10 sec :" + zk.getMinimum() + "
-				// -maxTime- " + maxTime
-				// + " -maxLag- " + maxLag);
+			while (zk.getMinimum() < maxTime || maxLag > this.configReader.getSmallDeltaValue()) {
 				try {
 					Thread.sleep(this.configReader.getSleepTimeMs());
 				} catch (InterruptedException e) {
@@ -106,7 +105,7 @@ public class KafkaAlgoAppRunner<K, V> {
 			}
 			maxTime = maxTime + this.configReader.getDeltaValue();
 			leadTime = 0;
-			messageSendRecursive(rec, producer, consumerLag, considerLag, zk);
+			messageSendRecursive(rec, producer, consumerLag, considerLag, zk, fieldNameToConsider, targetLag);
 
 		}
 

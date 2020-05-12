@@ -3,6 +3,8 @@ kafka:
    appId: kafka-algo-app-1
    bootstrapServers: |
       192.168.56.101:9092
+   bootstrapServersTarget: |
+      192.168.56.101:9092
    zookeeperHost: 192.168.56.101
    defaultKeySerde: String
    defaultValueSerde: Avro
@@ -13,7 +15,10 @@ kafka:
    autoOffsetReset: earliest
    schemaRegistyUrl: http://192.168.56.101:8081/
    topics:
-      input-topic-1: input-topic-3
-      input-topic-2: input-topic-4
-      output-topic-1: output-topic-3
-      output-topic-2: output-topic-4
+      input-topic-1: input-topic-1
+      input-topic-2: input-topic-2
+      output-topic-1: output-topic-1
+      output-topic-2: output-topic-2
+   topicsFields: 
+      input-topic-1: insert_dt
+      input-topic-2: upd_dt
