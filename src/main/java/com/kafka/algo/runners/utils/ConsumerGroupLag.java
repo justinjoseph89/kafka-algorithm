@@ -17,7 +17,8 @@ import org.apache.kafka.clients.consumer.KafkaConsumer;
 import org.apache.kafka.clients.consumer.OffsetAndMetadata;
 import org.apache.kafka.common.TopicPartition;
 
-import com.kafka.algo.runner.configreader.KafkaConfigReader;;
+import com.kafka.algo.runners.configreader.KafkaConfigReader;
+
 
 /**
  * @author justin

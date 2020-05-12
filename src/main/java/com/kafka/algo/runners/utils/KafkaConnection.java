@@ -5,7 +5,7 @@ import java.util.Properties;
 import org.apache.kafka.clients.consumer.ConsumerConfig;
 import org.apache.kafka.clients.producer.ProducerConfig;
 
-import com.kafka.algo.runner.configreader.KafkaConfigReader;
+import com.kafka.algo.runners.configreader.KafkaConfigReader;
 import com.kafka.algo.runners.deserializers.KafkaDeserializers;
 import com.kafka.algo.runners.serializers.KafkaSerializers;
 

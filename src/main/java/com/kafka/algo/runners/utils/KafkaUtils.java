@@ -12,7 +12,8 @@ import org.apache.kafka.clients.consumer.ConsumerRecords;
 import org.apache.kafka.clients.consumer.KafkaConsumer;
 import org.apache.kafka.common.PartitionInfo;
 
-import com.kafka.algo.runner.configreader.KafkaConfigReader;
+import com.kafka.algo.runners.configreader.KafkaConfigReader;
+
 
 /**
  * Use the functions in this class to identify the kafka related data
