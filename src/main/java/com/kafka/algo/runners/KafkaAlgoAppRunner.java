@@ -28,13 +28,14 @@ public class KafkaAlgoAppRunner<K, V> {
 	private String outputTopicName;
 	private String groupId;
 	private KafkaConfigReader configReader;
+	private FieldSelector fieldSelector;
 
-	public KafkaAlgoAppRunner(final String inputTopicName, final String outputTopicName,
-			final KafkaConfigReader configReader) {
+	public KafkaAlgoAppRunner(final String inputTopicName, final KafkaConfigReader configReader) {
 		this.inputTopicName = inputTopicName;
-		this.outputTopicName = outputTopicName;
+		this.outputTopicName = inputTopicName + "-damn";
 		this.configReader = configReader;
 		this.groupId = GROUPID_PREFIX + this.configReader.getAppVersion() + System.currentTimeMillis();
+		this.fieldSelector = new FieldSelector();
 	}
 
 	public void start() {
@@ -73,7 +74,7 @@ public class KafkaAlgoAppRunner<K, V> {
 			final ConsumerGroupSourceLag<K, V> consumerLag, final boolean considerLag, final ZkConnect zk,
 			final String fieldNameToConsider, final ConsumerGroupTargetLag<K, V> targetLag) {
 
-		long recTimestamp = FieldSelector.getTimestampFromData(fieldNameToConsider, rec);
+		long recTimestamp = this.fieldSelector.getTimestampFromData(fieldNameToConsider, rec);
 
 		final long lag = consumerLag.getConsumerGroupLag(this.groupId);
 		long maxLag = targetLag.getAnyActiveConsumerLag();
@@ -88,7 +89,7 @@ public class KafkaAlgoAppRunner<K, V> {
 			}
 
 			if (leadTime <= this.configReader.getSmallDeltaValue()) {
-				producer.send(new ProducerRecord<K, V>(outputTopicName, rec.key(), rec.value()));
+				producer.send(new ProducerRecord<K, V>(this.outputTopicName, rec.key(), rec.value()));
 			}
 		}
 
@@ -98,6 +99,7 @@ public class KafkaAlgoAppRunner<K, V> {
 			// here need to think about the implementation of maxLag
 			while (zk.getMinimum() < maxTime || maxLag > this.configReader.getSmallDeltaValue()) {
 				try {
+//					System.out.println("Sleepeing Topic " + this.inputTopicName + " -maxLag- " + maxLag);
 					Thread.sleep(this.configReader.getSleepTimeMs());
 				} catch (InterruptedException e) {
 					e.printStackTrace();

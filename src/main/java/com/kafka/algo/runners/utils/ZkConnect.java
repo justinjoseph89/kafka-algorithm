@@ -36,7 +36,7 @@ public class ZkConnect {
 	 */
 	public ZkConnect(final String topicName, final boolean reset, final KafkaConfigReader configReader) {
 		this.configReader = configReader;
-		this.znodeName = ZNODE_PREFIX + ZNODE_START + configReader.getAppVersion() + topicName;
+		this.znodeName = ZNODE_PREFIX + ZNODE_START + configReader.getAppVersion() + "-" + topicName;
 		this.zk = this.connect(configReader.getZookeeperHost());
 		createNode(0L, reset);
 	}
@@ -158,7 +158,6 @@ public class ZkConnect {
 			zNodes = zk.getChildren("/", true);
 			for (String zNode : zNodes) {
 				if (zNode.startsWith(ZNODE_START + this.configReader.getAppVersion())) {
-					System.out.println(zNode);
 					String data = new String(getDataFromPath("/" + zNode));
 					treeSet.add(Long.parseLong(data));
 				}
@@ -167,7 +166,7 @@ public class ZkConnect {
 			e.printStackTrace();
 		}
 
-		return treeSet.isEmpty() ? 0 : treeSet.ceiling(100L);
+		return treeSet.isEmpty() ? 0L : treeSet.ceiling(100L);
 	}
 
 }

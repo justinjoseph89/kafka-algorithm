@@ -2,26 +2,33 @@ package com.kafka.algo.runners.configreader;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.dataformat.yaml.YAMLFactory;
+import com.kafka.algo.KafkaAlgoApp;
 import com.kafka.algo.runners.configreader.config.KafkaConfiguration;
 
 import java.io.File;
+import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.util.Map;
+
+import org.apache.log4j.Logger;
 
 /**
  * @author justin
  *
  */
 public class KafkaConfigReader {
+	private static final Logger LOGGER = Logger.getLogger(KafkaConfigReader.class.getName());
+
 	private ObjectMapper mapper = new ObjectMapper(new YAMLFactory());
 	private KafkaConfiguration kafkaConfig;
 
-	public KafkaConfigReader() {
+	public KafkaConfigReader(String path) {
 		try {
-			this.kafkaConfig = mapper.readValue(new File("src/main/resources/application.yaml"),
-					KafkaConfiguration.class);
+			this.kafkaConfig = mapper.readValue(new File(path), KafkaConfiguration.class);
+		} catch (FileNotFoundException e) {
+			LOGGER.error("File Not Found Exception While Reading YAML file");
 		} catch (IOException e) {
-			e.printStackTrace();
+			LOGGER.error("IOException While Reading YAML file ");
 		}
 	}
 
