@@ -8,6 +8,8 @@ import java.util.List;
 import java.util.TreeSet;
 import java.util.concurrent.CountDownLatch;
 
+import org.apache.kafka.clients.producer.KafkaProducer;
+import org.apache.log4j.Logger;
 import org.apache.zookeeper.CreateMode;
 import org.apache.zookeeper.KeeperException;
 import org.apache.zookeeper.WatchedEvent;
@@ -17,17 +19,21 @@ import org.apache.zookeeper.ZooDefs.Ids;
 import org.apache.zookeeper.ZooKeeper;
 import org.apache.zookeeper.data.Stat;
 
-import com.kafka.algo.runners.configreader.KafkaConfigReader;;
+import com.kafka.algo.runners.configreader.KafkaConfigReader;
+import com.kafka.algo.runners.kafkautils.KafkaConnection;;
 
 /**
  * @author justin
  *
  */
 public class ZkConnect {
+	private static final Logger LOGGER = Logger.getLogger(ZkConnect.class.getName());
 	private ZooKeeper zk;
 	private CountDownLatch connSignal = new CountDownLatch(0);
 	private String znodeName;
 	private KafkaConfigReader configReader;
+	@SuppressWarnings("unused")
+	private boolean reset;
 
 	/**
 	 * @param topicName
@@ -38,7 +44,8 @@ public class ZkConnect {
 		this.configReader = configReader;
 		this.znodeName = ZNODE_PREFIX + ZNODE_START + configReader.getAppVersion() + "-" + topicName;
 		this.zk = this.connect(configReader.getZookeeperHost());
-		createNode(0L, reset);
+		this.reset = reset;
+		createNode(0L, topicName);
 	}
 
 	/**
@@ -47,7 +54,7 @@ public class ZkConnect {
 	 * @param host
 	 * @return
 	 */
-	private ZooKeeper connect(String host) {
+	private ZooKeeper connect(final String host) {
 		try {
 			zk = new ZooKeeper(host, 3000, new Watcher() {
 				public void process(WatchedEvent event) {
@@ -57,10 +64,8 @@ public class ZkConnect {
 				}
 			});
 			connSignal.await();
-		} catch (IOException e) {
-			e.printStackTrace();
-		} catch (InterruptedException e) {
-			e.printStackTrace();
+		} catch (IOException | InterruptedException e) {
+			LOGGER.error("Exception while getting connection of the node.. " + e.getMessage());
 		}
 		return zk;
 	}
@@ -75,51 +80,86 @@ public class ZkConnect {
 	/**
 	 * Create the node with default data in the initial stage.
 	 * 
-	 * @param path
+	 * @param <K>
+	 * @param <V>
 	 * @param data
-	 * @param reset
+	 * @param topicName
 	 */
-	private void createNode(long data, boolean reset) {
-		// String znodeName = this.znodeName + "_" + partition;
-		try {
-			Stat nodeExistence = zk.exists(this.znodeName, true);
-
-			if (nodeExistence != null) {
-				if (reset = true) {
-					zk.delete(this.znodeName, zk.exists(this.znodeName, true).getVersion());
-					zk.create(this.znodeName, String.valueOf(data).getBytes(), Ids.OPEN_ACL_UNSAFE,
-							CreateMode.PERSISTENT);
+	private <K, V> void createNode(final long data, final String topicName) {
+		final KafkaProducer<K, V> producer = new KafkaProducer<K, V>(
+				KafkaConnection.getKafkaProducerProperties(this.configReader));
+		producer.partitionsFor(topicName).forEach(partitionInfo -> {
+			final int partitionNumber = partitionInfo.partition();
+			try {
+				final String znodeUpdated = this.znodeName + "-" + partitionNumber;
+				final Stat nodeExistence = zk.exists(znodeUpdated, true);
+				if (nodeExistence != null) {
+					if (this.reset = true) {
+						zk.delete(znodeUpdated, zk.exists(znodeUpdated, true).getVersion());
+						zk.create(znodeUpdated, String.valueOf(data).getBytes(), Ids.OPEN_ACL_UNSAFE,
+								CreateMode.PERSISTENT);
+					} else {
+						LOGGER.warn("Node Already Present. Do Nothing. Go For Update. Please Ignore If it is intended");
+					}
 				} else {
-					System.out.println("Node Already Present. Do Nothing. Go For Update.");
+					zk.create(znodeUpdated, String.valueOf(data).getBytes(), Ids.OPEN_ACL_UNSAFE,
+							CreateMode.PERSISTENT);
 				}
-			} else {
-				zk.create(this.znodeName, String.valueOf(data).getBytes(), Ids.OPEN_ACL_UNSAFE, CreateMode.PERSISTENT);
+			} catch (KeeperException | InterruptedException e) {
+				LOGGER.error("Exception while creating the node.. " + e.getMessage());
+			}
+		});
+		producer.close();
+	}
 
+	/**
+	 * @param data
+	 * @throws Exception
+	 */
+	public void updateNode(final long data, final int partition) {
+		final String znodeUpdated = this.znodeName + "-" + partition;
+		try {
+			zk.setData(znodeUpdated, String.valueOf(data).getBytes(), zk.exists(znodeUpdated, true).getVersion());
+		} catch (KeeperException | InterruptedException e) {
+			LOGGER.error("Exception while updating data in the zookeeper node.. " + e.getMessage());
+		}
+	}
+
+	/**
+	 * @throws Exception
+	 */
+	@SuppressWarnings("unused")
+	@Deprecated
+	private void deleteNode(final int partitionNumber) {
+		try {
+			zk.delete(this.znodeName + "-" + partitionNumber,
+					zk.exists(this.znodeName + "-" + partitionNumber, true).getVersion());
+		} catch (InterruptedException | KeeperException e) {
+			LOGGER.error("Exception while deletting one node.. " + e.getMessage());
+		}
+	}
+
+	/**
+	 * Deletes All the nodes corresponding to this application name
+	 * 
+	 * @throws Exception
+	 */
+	@SuppressWarnings("unused")
+	@Deprecated
+	private void deleteAllNode() {
+		final List<String> zNodes;
+		try {
+			zNodes = zk.getChildren("/", true);
+			for (String zNode : zNodes) {
+				if (zNode.startsWith(ZNODE_START)) {
+					System.out.println(zNode);
+					zk.delete("/" + zNode, zk.exists("/" + zNode, true).getVersion());
+				}
 			}
 		} catch (KeeperException | InterruptedException e) {
-			e.printStackTrace();
+			LOGGER.error("Exception while delete all zookeeper node.. " + e.getMessage());
 		}
-	}
 
-	/**
-	 * @param data
-	 * @throws Exception
-	 */
-	public void updateNode(long data, int partition) {
-		// String znodeName = this.znodeName + "_" + partition;
-		try {
-			zk.setData(this.znodeName, String.valueOf(data).getBytes(), zk.exists(this.znodeName, true).getVersion());
-		} catch (KeeperException | InterruptedException e) {
-			e.printStackTrace();
-		}
-	}
-
-	/**
-	 * @throws Exception
-	 */
-	@Deprecated
-	public void deleteNode() throws Exception {
-		zk.delete(this.znodeName, zk.exists(this.znodeName, true).getVersion());
 	}
 
 	/**
@@ -141,7 +181,7 @@ public class ZkConnect {
 	 * @throws KeeperException
 	 * @throws Exception
 	 */
-	private byte[] getDataFromPath(String zNode) throws KeeperException, InterruptedException {
+	private byte[] getDataFromPath(final String zNode) throws KeeperException, InterruptedException {
 		return zk.getData(zNode, true, zk.exists(zNode, true));
 	}
 
@@ -152,18 +192,18 @@ public class ZkConnect {
 	 * @throws Exception
 	 */
 	public Long getMinimum() {
-		TreeSet<Long> treeSet = new TreeSet<Long>();
-		List<String> zNodes;
+		final TreeSet<Long> treeSet = new TreeSet<Long>();
+		final List<String> zNodes;
 		try {
 			zNodes = zk.getChildren("/", true);
-			for (String zNode : zNodes) {
+			for (final String zNode : zNodes) {
 				if (zNode.startsWith(ZNODE_START + this.configReader.getAppVersion())) {
-					String data = new String(getDataFromPath("/" + zNode));
+					final String data = new String(getDataFromPath("/" + zNode));
 					treeSet.add(Long.parseLong(data));
 				}
 			}
 		} catch (KeeperException | InterruptedException e) {
-			e.printStackTrace();
+			LOGGER.error("Exception while getting minimum value of the node.. " + e.getMessage());
 		}
 
 		return treeSet.isEmpty() ? 0L : treeSet.ceiling(100L);

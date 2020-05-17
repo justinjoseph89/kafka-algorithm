@@ -29,21 +29,24 @@ public class KafkaAlgoAppRunner<K, V> {
 	private String groupId;
 	private KafkaConfigReader configReader;
 	private FieldSelector fieldSelector;
+	private String outputTopicNameList;
 
-	public KafkaAlgoAppRunner(final String inputTopicName, final KafkaConfigReader configReader) {
+	public KafkaAlgoAppRunner(final String inputTopicName, final KafkaConfigReader configReader,
+			final String inputTopicNameList) {
 		this.inputTopicName = inputTopicName;
-		this.outputTopicName = inputTopicName + "-damn";
+		this.outputTopicName = inputTopicName;
 		this.configReader = configReader;
-		this.groupId = GROUPID_PREFIX + this.configReader.getAppVersion() + System.currentTimeMillis();
+		this.groupId = GROUPID_PREFIX + this.configReader.getAppVersion();
 		this.fieldSelector = new FieldSelector();
+		this.outputTopicNameList = inputTopicNameList;
 	}
 
 	public void start() {
-
+		System.out.println(this.inputTopicName);
 		final ZkConnect zk = new ZkConnect(this.inputTopicName, true, this.configReader);
 		final KafkaUtils<K, V> kafkaUtils = new KafkaUtils<K, V>(this.inputTopicName, this.configReader);
 		final ConsumerGroupTargetLag<K, V> targetLag = new ConsumerGroupTargetLag<K, V>(this.inputTopicName,
-				this.configReader);
+				this.configReader, this.outputTopicNameList);
 
 		maxTime = kafkaUtils.getTopicMinimumTime();
 
@@ -74,10 +77,10 @@ public class KafkaAlgoAppRunner<K, V> {
 			final ConsumerGroupSourceLag<K, V> consumerLag, final boolean considerLag, final ZkConnect zk,
 			final String fieldNameToConsider, final ConsumerGroupTargetLag<K, V> targetLag) {
 
-		long recTimestamp = this.fieldSelector.getTimestampFromData(fieldNameToConsider, rec);
+		final long recTimestamp = this.fieldSelector.getTimestampFromData(fieldNameToConsider, rec);
 
 		final long lag = consumerLag.getConsumerGroupLag(this.groupId);
-		long maxLag = targetLag.getAnyActiveConsumerLag();
+		final long maxLag = targetLag.getTargetActiveConsumerLag();
 
 		if (leadTime <= this.configReader.getSmallDeltaValue()) {
 			// consider Lag should be 0 in order to consider leadtime as 0.
@@ -99,7 +102,6 @@ public class KafkaAlgoAppRunner<K, V> {
 			// here need to think about the implementation of maxLag
 			while (zk.getMinimum() < maxTime || maxLag > this.configReader.getSmallDeltaValue()) {
 				try {
-//					System.out.println("Sleepeing Topic " + this.inputTopicName + " -maxLag- " + maxLag);
 					Thread.sleep(this.configReader.getSleepTimeMs());
 				} catch (InterruptedException e) {
 					e.printStackTrace();
