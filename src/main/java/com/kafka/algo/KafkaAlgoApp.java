@@ -16,16 +16,17 @@ public class KafkaAlgoApp {
 	public static <K, V> void main(String[] args) throws NotEnoughArgumentException {
 
 		if (args.length < 1) {
-			LOGGER.error("YAML file not found. Provide path ");
-			throw new NotEnoughArgumentException("YAML file not found. Provide path ");
+			LOGGER.error("Please provide YAML file path");
+			throw new NotEnoughArgumentException("YAML file not found check path " + args[0]);
 		}
 		CountDownLatch shutdownLatch = new CountDownLatch(1);
 		final KafkaConfigReader configReader = new KafkaConfigReader(args[0]);
 
-		final String inputTopicName = configReader.getTopics().get(INPUT_TOPIC_LIST);
+		final String inputTopicNameList = configReader.getTopics().get(INPUT_TOPIC_LIST);
 
-		Arrays.asList(inputTopicName.split(",")).parallelStream().forEach(inputTopic -> {
-			final KafkaAlgoAppRunner<K, V> runner = new KafkaAlgoAppRunner<K, V>(inputTopic, configReader);
+		Arrays.asList(inputTopicNameList.split(",")).parallelStream().forEach(inputTopic -> {
+			final KafkaAlgoAppRunner<K, V> runner = new KafkaAlgoAppRunner<K, V>(inputTopic, configReader,
+					inputTopicNameList);
 			runner.start();
 		});
 

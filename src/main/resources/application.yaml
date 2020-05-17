@@ -1,22 +1,21 @@
 #please note : no '-' is used
 kafka:
-   appId: kafka-algo-app-14 #This will define the appid
+   appId: kafka-algo-app-19 #This will define the appid
    bootstrapServers: |
-      192.168.56.101:9092
+      localhost:9092
    bootstrapServersTarget: |
-      192.168.56.101:9092
-   zookeeperHost: 192.168.56.101
+      localhost:9092
+   zookeeperHost: localhost
    defaultKeySerde: String
    defaultValueSerde: Avro
-   appVersion: 65 #This will define the version
+   appVersion: 70 #This will define the version
    appDeltaValue: 100
-   appSmallDeltaValue: 1
-   appSleepTimeMs: 100
+   appSmallDeltaValue: 100
+   appSleepTimeMs: 5
    autoOffsetReset: earliest
-   schemaRegistyUrl: http://192.168.56.101:8081/
+   schemaRegistyUrl: http://localhost:8081/
    topics:
       input-topics: input-topic-1,input-topic-2
-      output-topics: output-topic-1,output-topic-2
    topicsFields:
       input-topic-1: insert_dt
       input-topic-2: upd_dt

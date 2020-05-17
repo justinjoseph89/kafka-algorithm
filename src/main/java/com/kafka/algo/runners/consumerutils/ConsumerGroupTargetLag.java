@@ -3,11 +3,15 @@ package com.kafka.algo.runners.consumerutils;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
+import java.util.Collections;
+import java.util.HashMap;
+import java.util.HashSet;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
 import java.util.Properties;
+import java.util.Set;
 import java.util.TreeSet;
 import java.util.concurrent.ExecutionException;
 
@@ -23,6 +27,7 @@ import com.kafka.algo.runners.configreader.KafkaConfigReader;
 import com.kafka.algo.runners.kafkautils.KafkaConnection;
 
 import static com.kafka.algo.runners.constants.Constants.NO_GROUP_FOUND;
+import static com.kafka.algo.runners.constants.Constants.GROUPID_PREFIX;
 
 /**
  * @author justin
@@ -35,17 +40,21 @@ public class ConsumerGroupTargetLag<K, V> {
 	private KafkaConfigReader configReader;
 	private KafkaConsumer<K, V> consumer;
 	private String inputTopicName;
+	private List<String> outputTopicNameList;
 
 	/**
 	 * @param inputTopicName
 	 * @param consumer
 	 * @param configReader
+	 * @param outputTopicNameList
 	 */
-	public ConsumerGroupTargetLag(String inputTopicName, final KafkaConfigReader configReader) {
+	public ConsumerGroupTargetLag(final String inputTopicName, final KafkaConfigReader configReader,
+			final String outputTopicNameList) {
 		this.configReader = configReader;
 		this.inputTopicName = inputTopicName;
 		this.client = AdminClient.create(kafkaProperties());
 		this.consumer = new KafkaConsumer<>(KafkaConnection.getKafkaTargetConsumerProperties(configReader));
+		this.outputTopicNameList = Arrays.asList(outputTopicNameList.split(","));
 	}
 
 	/**
@@ -117,12 +126,110 @@ public class ConsumerGroupTargetLag<K, V> {
 	}
 
 	/**
+	 * @return Returns the first consumer group that subscribed to the topic which
+	 *         is stable. Performance Implications.
+	 * @return consumerGroupList processing the topic
+	 * @throws InterruptedException
+	 * @throws ExecutionException
+	 */
+
+	private boolean checkAllTopicsInCosumerGroup(final String groupId) {
+
+		boolean containsAll = false;
+		try {
+			final Set<String> consumingTopicSet = new HashSet<String>();
+			this.client.listConsumerGroupOffsets(groupId).partitionsToOffsetAndMetadata().get().keySet()
+					.forEach(topicPartition -> {
+						consumingTopicSet.add(topicPartition.topic());
+					});
+			containsAll = consumingTopicSet.containsAll(this.outputTopicNameList) ? true : false;
+
+		} catch (InterruptedException | ExecutionException e) {
+			e.printStackTrace();
+		}
+		return containsAll;
+	}
+
+	/**
 	 * @return This will return all consumer groups as a List<String> that
 	 *         subscribed to the topic. Possible Performance Issue because of entire
 	 *         iteration of consumer groups.
 	 * @throws InterruptedException
 	 * @throws ExecutionException
 	 */
+	private List<String> getConsumerGroupListContainsInputTopics() {
+
+		final List<String> consumerGroupList = new ArrayList<String>();
+		try {
+			this.client.listConsumerGroups().all().get().forEach(consumerGroupListing -> {
+				final String groupId = consumerGroupListing.groupId();
+				if (checkAllTopicsInCosumerGroup(groupId)) {
+					this.client.describeConsumerGroups(Arrays.asList(groupId)).describedGroups().values()
+							.forEach(consumerDesc -> {
+								try {
+									if (consumerDesc.get().state().toString().equals("Stable")) {
+										consumerGroupList.add(groupId);
+									}
+								} catch (InterruptedException | ExecutionException e) {
+									e.printStackTrace();
+								}
+							});
+					consumerGroupList.add(consumerGroupListing.groupId());
+				}
+			});
+		} catch (InterruptedException | ExecutionException e) {
+			e.printStackTrace();
+		}
+		return consumerGroupList;
+	}
+
+	private Map<String, HashMap<String, Long>> getConsumerLagMap() {
+		final List<String> activeConsumerGroupList = getConsumerGroupListContainsInputTopics();
+		final Map<String, HashMap<String, Long>> hmFinal = new HashMap<String, HashMap<String, Long>>();
+		activeConsumerGroupList.forEach(groupId -> {
+			HashMap<String, Long> hm = new HashMap<String, Long>();
+			try {
+				Map<TopicPartition, OffsetAndMetadata> consumerGroupOffsets = getOffsetMetadata(groupId);
+				Map<TopicPartition, Long> topicEndOffsets = getPartitionEndOffsets(consumerGroupOffsets.keySet());
+
+				Iterator<Entry<TopicPartition, OffsetAndMetadata>> consumerItr = consumerGroupOffsets.entrySet()
+						.iterator();
+				while (consumerItr.hasNext()) {
+					Entry<TopicPartition, OffsetAndMetadata> partitionData = consumerItr.next();
+					final String topicName = partitionData.getKey().topic();
+					if (!topicName.equals(this.inputTopicName + "-temp")) {
+						long lag = topicEndOffsets.get(partitionData.getKey()) - partitionData.getValue().offset();
+						if (lag < 0) {
+							lag = 0;
+						}
+
+						if (hm.containsKey(topicName)) {
+							long totalLag = hm.get(topicName) + lag;
+							hm.put(topicName, totalLag);
+						} else {
+							hm.put(topicName, lag);
+						}
+					}
+				}
+				hmFinal.put(groupId, hm);
+			} catch (InterruptedException | ExecutionException e) {
+				// TODO Auto-generated catch block
+				e.printStackTrace();
+			}
+		});
+
+		return hmFinal;
+
+	}
+
+	/**
+	 * @return This will return all consumer groups as a List<String> that
+	 *         subscribed to the topic. Possible Performance Issue because of entire
+	 *         iteration of consumer groups.
+	 * @throws InterruptedException
+	 * @throws ExecutionException
+	 */
+	@Deprecated
 	private List<String> getConsumerGroupList() {
 
 		List<String> consumerGroupList = new ArrayList<String>();
@@ -145,14 +252,12 @@ public class ConsumerGroupTargetLag<K, V> {
 								consumerGroupList.add(consumerGroupListing.groupId());
 							}
 						}
-
 					}
 				}
 			}
 		} catch (InterruptedException | ExecutionException e) {
 			e.printStackTrace();
 		}
-
 		return consumerGroupList;
 	}
 
@@ -162,6 +267,7 @@ public class ConsumerGroupTargetLag<K, V> {
 	 * @param groupId
 	 * @return
 	 */
+	@Deprecated
 	private long getConsumerGroupLag(String groupId) {
 
 		long totalLag = 0L;
@@ -192,6 +298,7 @@ public class ConsumerGroupTargetLag<K, V> {
 	 * @param groupId
 	 * @return
 	 */
+	@Deprecated
 	private long getConsumerGroupsLag(List<String> groupIdList) {
 		TreeSet<Long> lagSet = new TreeSet<Long>();
 		try {
@@ -228,6 +335,7 @@ public class ConsumerGroupTargetLag<K, V> {
 	 * 
 	 * @return
 	 */
+	@Deprecated
 	public long getAnyActiveConsumerLag() {
 		String groupId = getConsumerGroups();
 		return groupId.equals(NO_GROUP_FOUND) ? 0L : getConsumerGroupLag(groupId);
@@ -239,18 +347,31 @@ public class ConsumerGroupTargetLag<K, V> {
 	 * 
 	 * @return
 	 */
+	@Deprecated
 	public long getAnyActiveLeastConsumerLag() {
 		List<String> groupIdList = getConsumerGroupList();
 		return groupIdList.size() == 0 ? 0L : getConsumerGroupsLag(groupIdList);
 	}
 
-	// public static void main(String[] args) {
-	// KafkaConfigReader config = new KafkaConfigReader();
-	// ConsumerGroupTargetLag lag = new ConsumerGroupTargetLag<>(config);
-	//
-	// System.out.println(lag.getConsumerGroups());
-	// System.out.println(lag.getConsumerGroupLag(lag.getConsumerGroups()));
-	//
-	// }
+	/**
+	 * This will return lag of of the consumer group that is active and less in any
+	 * of all for this topic. This will be 0 if there is no groups available.
+	 * 
+	 * @return
+	 */
+	public long getTargetActiveConsumerLag() {
+		Map<String, HashMap<String, Long>> groupIdList = getConsumerLagMap();
+		if (groupIdList.size() < 1) {
+			return 0L;
+		}
+		final TreeSet<Long> versionSet = new TreeSet<Long>();
+		groupIdList.keySet().forEach(key -> {
+			String[] keySplitor = key.split("-");
+			versionSet.add(Long.parseLong(keySplitor[keySplitor.length - 1]));
+		});
+		final String consumerGroup = GROUPID_PREFIX + versionSet.last();
+		final long maxLag = Collections.max(groupIdList.get(consumerGroup).values());
+		return maxLag;
+	}
 
 }

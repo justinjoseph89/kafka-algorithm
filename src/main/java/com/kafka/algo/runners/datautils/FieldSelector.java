@@ -3,6 +3,8 @@ package com.kafka.algo.runners.datautils;
 import static com.kafka.algo.runners.constants.Constants.TOPIC_FIELD_DEFAULT;
 
 import org.apache.avro.Schema;
+import org.apache.avro.Schema.Field;
+import org.apache.avro.Schema.Type;
 import org.apache.avro.generic.GenericRecord;
 import org.apache.avro.util.Utf8;
 import org.apache.kafka.clients.consumer.ConsumerRecord;
@@ -40,6 +42,29 @@ public class FieldSelector {
 		return recTimestamp;
 	}
 
+	private String findFieldValue(final Schema schema, final String name, final GenericRecord data) {
+		String foundField = null;
+		if (schema.getField(name) != null) {
+			foundField = data.get(name).toString();
+			return foundField;
+		}
+		for (Field field : schema.getFields()) {
+			Schema fieldSchema = field.schema();
+			if (Type.RECORD.equals(fieldSchema.getType())) {
+				foundField = findFieldValue(fieldSchema, name, (GenericRecord) data.get(field.pos()));
+				return foundField;
+			} else if (Type.ARRAY.equals(fieldSchema.getType())) {
+				foundField = findFieldValue(fieldSchema.getElementType(), name, data);
+				return foundField;
+			} else if (Type.MAP.equals(fieldSchema.getType())) {
+				foundField = findFieldValue(fieldSchema.getValueType(), name, data);
+				return foundField;
+			}
+		}
+
+		return foundField;
+	}
+
 	/**
 	 * @param value
 	 * @param name
@@ -67,6 +92,26 @@ public class FieldSelector {
 			}
 			return finalValue;
 		}
+
+		// Field foundField = null;
+		//
+		// for (Field field : schema.getFields()) {
+		// Schema fieldSchema = field.schema();
+		// Object newVal = value.get(field.name());
+		// if (Type.RECORD.equals(fieldSchema.getType())) {
+		//
+		// foundField = findField(newVal, name);
+		// } else if (Type.ARRAY.equals(fieldSchema.getType())) {
+		// foundField = findField(fieldSchema.getElementType(), name);
+		// } else if (Type.MAP.equals(fieldSchema.getType())) {
+		// foundField = findField(fieldSchema.getValueType(), name);
+		// }
+		//
+		// if (foundField != null) {
+		// return foundField;
+		// }
+		// }
+		//
 		return finalValue;
 	}
 
@@ -88,4 +133,28 @@ public class FieldSelector {
 		return formatter.parseDateTime(date).getMillis();
 
 	}
+
+	// public static void main(String[] args) {
+	// String customerSchemaString = "{\"namespace\": \"customer.avro\",
+	// \"type\":\"record\", "
+	// + "\"name\": \"customer_details\"," + "\"fields\": ["
+	// + "{\"name\": \"customer_id\", \"type\": \"string\"},"
+	// + "{\"name\": \"dep_id\", \"type\": \"string\"},{\"name\":
+	// \"customer_name\",\"type\": \"string\"},{\"name\": \"insert_dt\", \"type\":
+	// \"string\"}"
+	// + "]}";
+	//
+	// Schema.Parser parser = new Schema.Parser();
+	// Schema schema = parser.parse(customerSchemaString);
+	// GenericRecord customerRec = new GenericData.Record(schema);
+	// customerRec.put("customer_id", String.valueOf(1));
+	// customerRec.put("dep_id", String.valueOf(2));
+	// customerRec.put("customer_name", "Customer-" + String.valueOf(3));
+	// customerRec.put("insert_dt", String.valueOf(new
+	// Timestamp(System.currentTimeMillis())));
+	// FieldSelector sesctor = new FieldSelector();
+	// System.out.println(sesctor.findField(customerRec, "insert_dt"));
+	// ;
+	// }
+
 }
