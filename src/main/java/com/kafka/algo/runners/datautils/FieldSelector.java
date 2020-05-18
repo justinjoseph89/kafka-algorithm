@@ -27,7 +27,8 @@ public class FieldSelector {
 	 * @param rec
 	 * @return
 	 */
-	public <K, V> long getTimestampFromData(String fieldNameToConsider, ConsumerRecord<K, V> rec) {
+	@Deprecated
+	public <K, V> long getTimestampFromDataOld(String fieldNameToConsider, ConsumerRecord<K, V> rec) {
 		long recTimestamp = 0;
 		if (fieldNameToConsider.equals(TOPIC_FIELD_DEFAULT)) {
 			recTimestamp = rec.timestamp();
@@ -42,6 +43,37 @@ public class FieldSelector {
 		return recTimestamp;
 	}
 
+	/**
+	 * @param fieldNameToConsider
+	 * @param rec
+	 * @return
+	 */
+	public <K, V> long getTimestampFromData(final String fieldNameToConsider, final ConsumerRecord<K, V> rec) {
+		long recTimestamp = 0;
+		if (fieldNameToConsider.equals(TOPIC_FIELD_DEFAULT)) {
+			recTimestamp = rec.timestamp();
+			return recTimestamp;
+		} else {
+			if (rec.value() instanceof GenericRecord) {
+				final GenericRecord value = (GenericRecord) rec.value();
+				String returnValue = findFieldValue(value.getSchema(), fieldNameToConsider, value);
+				try {
+					recTimestamp = Long.parseLong(returnValue);
+				} catch (NumberFormatException e) {
+					recTimestamp = getMillies(returnValue);
+				}
+				return recTimestamp;
+			}
+		}
+		return recTimestamp;
+	}
+	
+	/**
+	 * @param schema
+	 * @param name
+	 * @param data
+	 * @return
+	 */
 	private String findFieldValue(final Schema schema, final String name, final GenericRecord data) {
 		String foundField = null;
 		if (schema.getField(name) != null) {
@@ -70,6 +102,7 @@ public class FieldSelector {
 	 * @param name
 	 * @return
 	 */
+	@Deprecated
 	private long findField(GenericRecord value, String name) {
 		long finalValue = 0;
 		Schema schema = value.getSchema();
@@ -92,26 +125,6 @@ public class FieldSelector {
 			}
 			return finalValue;
 		}
-
-		// Field foundField = null;
-		//
-		// for (Field field : schema.getFields()) {
-		// Schema fieldSchema = field.schema();
-		// Object newVal = value.get(field.name());
-		// if (Type.RECORD.equals(fieldSchema.getType())) {
-		//
-		// foundField = findField(newVal, name);
-		// } else if (Type.ARRAY.equals(fieldSchema.getType())) {
-		// foundField = findField(fieldSchema.getElementType(), name);
-		// } else if (Type.MAP.equals(fieldSchema.getType())) {
-		// foundField = findField(fieldSchema.getValueType(), name);
-		// }
-		//
-		// if (foundField != null) {
-		// return foundField;
-		// }
-		// }
-		//
 		return finalValue;
 	}
 
@@ -131,30 +144,6 @@ public class FieldSelector {
 		DateTimeFormatter formatter = new DateTimeFormatterBuilder().append(null, dateParsers).toFormatter();
 
 		return formatter.parseDateTime(date).getMillis();
-
 	}
-
-	// public static void main(String[] args) {
-	// String customerSchemaString = "{\"namespace\": \"customer.avro\",
-	// \"type\":\"record\", "
-	// + "\"name\": \"customer_details\"," + "\"fields\": ["
-	// + "{\"name\": \"customer_id\", \"type\": \"string\"},"
-	// + "{\"name\": \"dep_id\", \"type\": \"string\"},{\"name\":
-	// \"customer_name\",\"type\": \"string\"},{\"name\": \"insert_dt\", \"type\":
-	// \"string\"}"
-	// + "]}";
-	//
-	// Schema.Parser parser = new Schema.Parser();
-	// Schema schema = parser.parse(customerSchemaString);
-	// GenericRecord customerRec = new GenericData.Record(schema);
-	// customerRec.put("customer_id", String.valueOf(1));
-	// customerRec.put("dep_id", String.valueOf(2));
-	// customerRec.put("customer_name", "Customer-" + String.valueOf(3));
-	// customerRec.put("insert_dt", String.valueOf(new
-	// Timestamp(System.currentTimeMillis())));
-	// FieldSelector sesctor = new FieldSelector();
-	// System.out.println(sesctor.findField(customerRec, "insert_dt"));
-	// ;
-	// }
 
 }
