@@ -9,6 +9,7 @@ import static com.kafka.algo.runners.constants.Constants.INPUT_TOPIC_LIST;
 
 import java.util.Arrays;
 import java.util.concurrent.CountDownLatch;
+import java.util.stream.LongStream;
 
 public class KafkaAlgoApp {
 	private static final Logger LOGGER = Logger.getLogger(KafkaAlgoApp.class.getName());
@@ -23,11 +24,13 @@ public class KafkaAlgoApp {
 		final KafkaConfigReader configReader = new KafkaConfigReader(args[0]);
 
 		final String inputTopicNameList = configReader.getTopics().get(INPUT_TOPIC_LIST);
-
+		final long consumerThreads = configReader.getConsumerThreads();
 		Arrays.asList(inputTopicNameList.split(",")).parallelStream().forEach(inputTopic -> {
-			final KafkaAlgoAppRunner<K, V> runner = new KafkaAlgoAppRunner<K, V>(inputTopic, configReader,
-					inputTopicNameList);
-			runner.start();
+			LongStream.range(0, consumerThreads).parallel().forEach(threads -> {
+				final KafkaAlgoAppRunner<K, V> runner = new KafkaAlgoAppRunner<K, V>(inputTopic, configReader,
+						inputTopicNameList);
+				runner.start();
+			});
 		});
 
 		try {

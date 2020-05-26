@@ -9,28 +9,30 @@ import java.util.Map;
  */
 public class KafkaProperties {
 
-	private String appId = "DEFAULT_APP_ID";
+//	private String appId = "DEFAULT_APP_ID";
 	private String bootstrapServers = "localhost:9092";
 	private String bootstrapServersTarget = "localhost:9092";
 	private String zookeeperHost = "localhost";
 	private String defaultKeySerde = "String";
 	private String defaultValueSerde = "String";
 	private String appVersion = "0";
-	private long appDeltaValue = 100L;
-	private long appSmallDeltaValue = 1L;
+	private boolean zkNodeUpd = false;
+	private float appDeltaValue = 100L;
+	private float appSmallDeltaValue = 1L;
 	private long appSleepTimeMs = 100;
 	private String schemaRegistyUrl = "http://localhost:8081/";
 	private String autoOffsetReset = "earliest";
+	private long numConsumerThreads = 1L;
 	private Map<String, String> topics = new HashMap<>();
 	private Map<String, String> topicsFields = new HashMap<>();
 
-	public String getAppId() {
-		return appId;
-	}
-
-	public void setAppId(String appId) {
-		this.appId = appId;
-	}
+//	public String getAppId() {
+//		return appId;
+//	}
+//
+//	public void setAppId(String appId) {
+//		this.appId = appId;
+//	}
 
 	public String getBootstrapServers() {
 		return bootstrapServers;
@@ -80,19 +82,27 @@ public class KafkaProperties {
 		this.appVersion = appVersion;
 	}
 
-	public long getAppDeltaValue() {
+	public boolean isZkNodeUpd() {
+		return zkNodeUpd;
+	}
+
+	public void setZkNodeUpd(boolean zkNodeUpd) {
+		this.zkNodeUpd = zkNodeUpd;
+	}
+
+	public float getAppDeltaValue() {
 		return appDeltaValue;
 	}
 
-	public void setAppDeltaValue(long appDeltaValue) {
+	public void setAppDeltaValue(float appDeltaValue) {
 		this.appDeltaValue = appDeltaValue;
 	}
 
-	public long getAppSmallDeltaValue() {
+	public float getAppSmallDeltaValue() {
 		return appSmallDeltaValue;
 	}
 
-	public void setAppSmallDeltaValue(long appSmallDeltaValue) {
+	public void setAppSmallDeltaValue(float appSmallDeltaValue) {
 		this.appSmallDeltaValue = appSmallDeltaValue;
 	}
 
@@ -118,6 +128,14 @@ public class KafkaProperties {
 
 	public void setAutoOffsetReset(String autoOffsetReset) {
 		this.autoOffsetReset = autoOffsetReset;
+	}
+
+	public long getNumConsumerThreads() {
+		return numConsumerThreads;
+	}
+
+	public void setNumConsumerThreads(long numConsumerThreads) {
+		this.numConsumerThreads = numConsumerThreads;
 	}
 
 	public Map<String, String> getTopics() {

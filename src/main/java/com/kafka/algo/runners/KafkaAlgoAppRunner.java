@@ -3,6 +3,8 @@ package com.kafka.algo.runners;
 import static com.kafka.algo.runners.constants.Constants.GROUPID_PREFIX;
 
 import java.time.Duration;
+import java.util.HashMap;
+
 import org.apache.kafka.clients.consumer.ConsumerRecord;
 import org.apache.kafka.clients.consumer.ConsumerRecords;
 import org.apache.kafka.clients.consumer.KafkaConsumer;
@@ -22,33 +24,35 @@ import com.kafka.algo.runners.utils.ZkConnect;
  *
  */
 public class KafkaAlgoAppRunner<K, V> {
-	private long maxTime;
-	private long leadTime = 0; // Initial Assignment
+	private double maxTime = 0d;
+	private double leadTime = 0d; // Initial Assignment
 	private String inputTopicName;
 	private String outputTopicName;
 	private String groupId;
 	private KafkaConfigReader configReader;
 	private FieldSelector fieldSelector;
 	private String outputTopicNameList;
+	private KafkaUtils<K, V> kafkaUtils;
+	private boolean isZkNodeUpd;
 
 	public KafkaAlgoAppRunner(final String inputTopicName, final KafkaConfigReader configReader,
 			final String inputTopicNameList) {
 		this.inputTopicName = inputTopicName;
+		// this.outputTopicName = inputTopicName + "-temp";
 		this.outputTopicName = inputTopicName;
 		this.configReader = configReader;
 		this.groupId = GROUPID_PREFIX + this.configReader.getAppVersion();
 		this.fieldSelector = new FieldSelector();
 		this.outputTopicNameList = inputTopicNameList;
+		// this.outputTopicNameList = "input-topic-1-temp,input-topic-2-temp";
+		this.kafkaUtils = new KafkaUtils<K, V>(this.inputTopicName, this.configReader);
+		this.isZkNodeUpd = this.configReader.isZkNodeUpd();
 	}
 
 	public void start() {
-		System.out.println(this.inputTopicName);
-		final ZkConnect zk = new ZkConnect(this.inputTopicName, true, this.configReader);
-		final KafkaUtils<K, V> kafkaUtils = new KafkaUtils<K, V>(this.inputTopicName, this.configReader);
+		final ZkConnect zk = new ZkConnect(this.inputTopicName, isZkNodeUpd, this.configReader);
 		final ConsumerGroupTargetLag<K, V> targetLag = new ConsumerGroupTargetLag<K, V>(this.inputTopicName,
 				this.configReader, this.outputTopicNameList);
-
-		maxTime = kafkaUtils.getTopicMinimumTime();
 
 		final KafkaConsumer<K, V> consumer = new KafkaConsumer<>(
 				KafkaConnection.getKafkaConsumerProperties(this.groupId, this.configReader));
@@ -63,8 +67,8 @@ public class KafkaAlgoAppRunner<K, V> {
 		boolean considerLag = false;
 
 		while (true) {
+			//Need to configure the polling interval
 			ConsumerRecords<K, V> records = consumer.poll(Duration.ofMillis(10000));
-
 			for (ConsumerRecord<K, V> rec : records) {
 				messageSendRecursive(rec, producer, consumerLag, considerLag, zk, fieldNameToConsider, targetLag);
 			}
@@ -78,37 +82,39 @@ public class KafkaAlgoAppRunner<K, V> {
 			final String fieldNameToConsider, final ConsumerGroupTargetLag<K, V> targetLag) {
 
 		final long recTimestamp = this.fieldSelector.getTimestampFromData(fieldNameToConsider, rec);
-
-		final long lag = consumerLag.getConsumerGroupLag(this.groupId);
+		final long lag = consumerLag.getConsumerGroupLag(this.groupId, this.inputTopicName, rec);
 		final long maxLag = targetLag.getTargetActiveConsumerLag();
 
-		if (leadTime <= this.configReader.getSmallDeltaValue()) {
-			// consider Lag should be 0 in order to consider leadtime as 0.
-			// since there wont be any lag in the initial consumption
+		if (maxTime == 0d) {
+			maxTime = zk.getMinimum() == 0d ? recTimestamp : zk.getMinimum();
+			maxTime = maxTime + this.configReader.getDeltaValue();
+			zk.updateNode(maxTime, rec.partition());
+		}
+		if (this.leadTime <= this.configReader.getSmallDeltaValue()) {
 			if (lag == 0 && considerLag == true) {
-				leadTime = 0;
+				this.leadTime = 0;
 			} else {
-				leadTime = recTimestamp - maxTime;
+				this.leadTime = recTimestamp - maxTime;
 			}
 
-			if (leadTime <= this.configReader.getSmallDeltaValue()) {
-				producer.send(new ProducerRecord<K, V>(this.outputTopicName, rec.key(), rec.value()));
+			if (this.leadTime <= this.configReader.getSmallDeltaValue()) {
+				producer.send(new ProducerRecord<K, V>(this.outputTopicName, rec.partition(), rec.key(), rec.value()));
 			}
 		}
 
-		if (leadTime > this.configReader.getSmallDeltaValue()) {
-
+		if (this.leadTime > this.configReader.getSmallDeltaValue()) {
 			zk.updateNode(maxTime, rec.partition());
-			// here need to think about the implementation of maxLag
-			while (zk.getMinimum() < maxTime || maxLag > this.configReader.getSmallDeltaValue()) {
+			while (zk.getMinimum(consumerLag.getTopicPartitionWithZeroLag(this.groupId)) < maxTime
+					|| maxLag > this.configReader.getSmallDeltaValue()) {
 				try {
 					Thread.sleep(this.configReader.getSleepTimeMs());
 				} catch (InterruptedException e) {
 					e.printStackTrace();
 				}
 			}
+
 			maxTime = maxTime + this.configReader.getDeltaValue();
-			leadTime = 0;
+			this.leadTime = 0;
 			messageSendRecursive(rec, producer, consumerLag, considerLag, zk, fieldNameToConsider, targetLag);
 
 		}
