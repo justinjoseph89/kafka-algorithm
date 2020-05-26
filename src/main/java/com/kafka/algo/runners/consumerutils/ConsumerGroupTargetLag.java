@@ -374,4 +374,17 @@ public class ConsumerGroupTargetLag<K, V> {
 		return maxLag;
 	}
 
+	// public static void main(String[] args) {
+	// KafkaConfigReader config = new
+	// KafkaConfigReader("src\\main\\resources\\application.yaml");
+	// ConsumerGroupTargetLag lag = new ConsumerGroupTargetLag<>("input-topic-1",
+	// config, "");
+	// System.out.println(lag.getTargetActiveConsumerLag(
+	// Arrays.asList("Mirror-Maker-1-511589661357727,Mirror-Maker-1-541589662039208".split(","))));
+	// // System.out.println(lag.getConsumerGroups());
+	// //
+	// System.out.println(lag.getConsumerGroupLag("Mirror-Maker-1-511589661357727"));
+	//
+	// }
+
 }

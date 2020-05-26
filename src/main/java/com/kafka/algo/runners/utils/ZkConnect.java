@@ -4,6 +4,7 @@ import static com.kafka.algo.runners.constants.Constants.ZNODE_PREFIX;
 import static com.kafka.algo.runners.constants.Constants.ZNODE_START;
 
 import java.io.IOException;
+import java.util.HashMap;
 import java.util.List;
 import java.util.TreeSet;
 import java.util.concurrent.CountDownLatch;
@@ -42,10 +43,10 @@ public class ZkConnect {
 	 */
 	public ZkConnect(final String topicName, final boolean reset, final KafkaConfigReader configReader) {
 		this.configReader = configReader;
-		this.znodeName = ZNODE_PREFIX + ZNODE_START + configReader.getAppVersion() + "-" + topicName;
+		this.znodeName = ZNODE_PREFIX + ZNODE_START + configReader.getAppVersion() + "#" + topicName;
 		this.zk = this.connect(configReader.getZookeeperHost());
 		this.reset = reset;
-		createNode(0L, topicName);
+		createNode(0d, topicName);
 	}
 
 	/**
@@ -82,10 +83,10 @@ public class ZkConnect {
 	 * 
 	 * @param <K>
 	 * @param <V>
-	 * @param data
+	 * @param d
 	 * @param topicName
 	 */
-	private <K, V> void createNode(final long data, final String topicName) {
+	private <K, V> void createNode(final double d, final String topicName) {
 		final KafkaProducer<K, V> producer = new KafkaProducer<K, V>(
 				KafkaConnection.getKafkaProducerProperties(this.configReader));
 		producer.partitionsFor(topicName).forEach(partitionInfo -> {
@@ -96,14 +97,13 @@ public class ZkConnect {
 				if (nodeExistence != null) {
 					if (this.reset = true) {
 						zk.delete(znodeUpdated, zk.exists(znodeUpdated, true).getVersion());
-						zk.create(znodeUpdated, String.valueOf(data).getBytes(), Ids.OPEN_ACL_UNSAFE,
+						zk.create(znodeUpdated, String.valueOf(d).getBytes(), Ids.OPEN_ACL_UNSAFE,
 								CreateMode.PERSISTENT);
 					} else {
 						LOGGER.warn("Node Already Present. Do Nothing. Go For Update. Please Ignore If it is intended");
 					}
 				} else {
-					zk.create(znodeUpdated, String.valueOf(data).getBytes(), Ids.OPEN_ACL_UNSAFE,
-							CreateMode.PERSISTENT);
+					zk.create(znodeUpdated, String.valueOf(d).getBytes(), Ids.OPEN_ACL_UNSAFE, CreateMode.PERSISTENT);
 				}
 			} catch (KeeperException | InterruptedException e) {
 				LOGGER.error("Exception while creating the node.. " + e.getMessage());
@@ -113,13 +113,13 @@ public class ZkConnect {
 	}
 
 	/**
-	 * @param data
+	 * @param maxTime
 	 * @throws Exception
 	 */
-	public void updateNode(final long data, final int partition) {
+	public void updateNode(final double maxTime, final int partition) {
 		final String znodeUpdated = this.znodeName + "-" + partition;
 		try {
-			zk.setData(znodeUpdated, String.valueOf(data).getBytes(), zk.exists(znodeUpdated, true).getVersion());
+			zk.setData(znodeUpdated, String.valueOf(maxTime).getBytes(), zk.exists(znodeUpdated, true).getVersion());
 		} catch (KeeperException | InterruptedException e) {
 			LOGGER.error("Exception while updating data in the zookeeper node.. " + e.getMessage());
 		}
@@ -152,7 +152,6 @@ public class ZkConnect {
 			zNodes = zk.getChildren("/", true);
 			for (String zNode : zNodes) {
 				if (zNode.startsWith(ZNODE_START)) {
-					System.out.println(zNode);
 					zk.delete("/" + zNode, zk.exists("/" + zNode, true).getVersion());
 				}
 			}
@@ -188,25 +187,59 @@ public class ZkConnect {
 	/**
 	 * This is to find the minimum data in the each topic
 	 * 
+	 * @param zeroLag
+	 * 
 	 * @return minimumTimestamp
 	 * @throws Exception
 	 */
-	public Long getMinimum() {
-		final TreeSet<Long> treeSet = new TreeSet<Long>();
+	public double getMinimum(final HashMap<String, Long> zeroLag) {
+		final TreeSet<Double> dataTreeSet = new TreeSet<Double>();
+		final TreeSet<Double> backupDataTreeSet = new TreeSet<Double>();
+
+		final List<String> zNodes;
+		try {
+			zNodes = zk.getChildren("/", true);
+			for (final String zNode : zNodes) {
+				if (zNode.startsWith(ZNODE_START + this.configReader.getAppVersion())) {
+					String[] topicPartitionArr = zNode.split("#");
+					String topicPartitionName = topicPartitionArr[topicPartitionArr.length - 1];
+					final String data = new String(getDataFromPath("/" + zNode));
+					if (!zeroLag.containsKey(topicPartitionName)) {
+						dataTreeSet.add(Double.parseDouble(data));
+					}
+					backupDataTreeSet.add(Double.parseDouble(data));
+				}
+			}
+		} catch (KeeperException | InterruptedException e) {
+			LOGGER.error("Exception while getting minimum value of the node.. " + e.getMessage());
+		}
+		return dataTreeSet.isEmpty() ? backupDataTreeSet.isEmpty() ? 0d : backupDataTreeSet.ceiling(100d)
+				: dataTreeSet.ceiling(100d);
+	}
+
+	/**
+	 * This is to find the minimum data in the each topic
+	 * 
+	 * @param zeroLag
+	 * 
+	 * @return minimumTimestamp
+	 * @throws Exception
+	 */
+	public double getMinimum() {
+		final TreeSet<Double> dataTreeSet = new TreeSet<Double>();
 		final List<String> zNodes;
 		try {
 			zNodes = zk.getChildren("/", true);
 			for (final String zNode : zNodes) {
 				if (zNode.startsWith(ZNODE_START + this.configReader.getAppVersion())) {
 					final String data = new String(getDataFromPath("/" + zNode));
-					treeSet.add(Long.parseLong(data));
+					dataTreeSet.add(Double.parseDouble(data));
 				}
 			}
 		} catch (KeeperException | InterruptedException e) {
 			LOGGER.error("Exception while getting minimum value of the node.. " + e.getMessage());
 		}
-
-		return treeSet.isEmpty() ? 0L : treeSet.ceiling(100L);
+		return dataTreeSet.first() == 0d ? 0d : dataTreeSet.ceiling(100d);
 	}
 
 }

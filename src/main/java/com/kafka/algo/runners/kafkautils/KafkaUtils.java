@@ -73,16 +73,16 @@ public class KafkaUtils<K, V> {
 	/**
 	 * @return
 	 */
-	public long getTopicMinimumTime() {
-		return this.topicTimestampMap.isEmpty() ? 0L : Collections.min(this.topicTimestampMap.values());
+	public double getTopicMinimumTime() {
+		return this.topicTimestampMap.isEmpty() ? 0d : Collections.min(this.topicTimestampMap.values());
 	}
 
 	/**
 	 * @param partition
 	 * @return
 	 */
-	public long getTopicPartitionMinimumTime(int partition) {
-		return this.topicTimestampMap.containsKey(partition) ? this.topicTimestampMap.get(partition) : 0L;
+	public double getTopicPartitionMinimumTime(int partition) {
+		return this.topicTimestampMap.containsKey(partition) ? this.topicTimestampMap.get(partition) : 0d;
 	}
 
 	/**

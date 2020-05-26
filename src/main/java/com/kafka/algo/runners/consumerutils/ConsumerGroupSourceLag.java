@@ -2,9 +2,11 @@ package com.kafka.algo.runners.consumerutils;
 
 import static com.kafka.algo.runners.constants.Constants.GROUPID_PREFIX;
 
+import java.util.ArrayList;
 import java.util.Collection;
 import java.util.HashMap;
 import java.util.Iterator;
+import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
 import java.util.Properties;
@@ -13,6 +15,7 @@ import java.util.concurrent.ExecutionException;
 
 import org.apache.kafka.clients.admin.AdminClient;
 import org.apache.kafka.clients.admin.ConsumerGroupListing;
+import org.apache.kafka.clients.consumer.ConsumerRecord;
 import org.apache.kafka.clients.consumer.KafkaConsumer;
 import org.apache.kafka.clients.consumer.OffsetAndMetadata;
 import org.apache.kafka.common.TopicPartition;
@@ -61,31 +64,6 @@ public class ConsumerGroupSourceLag<K, V> {
 	}
 
 	/**
-	 * @param groupIdStart
-	 * @return
-	 * @throws InterruptedException
-	 * @throws ExecutionException
-	 */
-	@SuppressWarnings("unused")
-	@Deprecated
-	private Map<TopicPartition, OffsetAndMetadata> getGroupOffsetMetadata(String groupIdStart)
-			throws InterruptedException, ExecutionException {
-		Map<TopicPartition, OffsetAndMetadata> offsetMetadataMap = new HashMap<TopicPartition, OffsetAndMetadata>();
-		Collection<ConsumerGroupListing> allGroupResults = this.client.listConsumerGroups().all().get();
-		Iterator<ConsumerGroupListing> itsGroup = allGroupResults.iterator();
-		while (itsGroup.hasNext()) {
-			ConsumerGroupListing consumerGroupListing = (ConsumerGroupListing) itsGroup.next();
-			String groupId = consumerGroupListing.groupId();
-			if (groupId.startsWith(groupIdStart)) {
-				offsetMetadataMap
-						.putAll(this.client.listConsumerGroupOffsets(groupId).partitionsToOffsetAndMetadata().get());
-			}
-
-		}
-		return offsetMetadataMap;
-	}
-
-	/**
 	 * @param partitionInfo
 	 * @return
 	 */
@@ -95,11 +73,13 @@ public class ConsumerGroupSourceLag<K, V> {
 
 	/**
 	 * @param groupId
+	 * @param inputTopicName
 	 * @return
 	 */
-	public long getConsumerGroupLag(String groupId) {
+	public long getConsumerGroupLag(final String groupId, final String inputTopicName, final ConsumerRecord<K, V> rec) {
 
-		long totalLag = 0L;
+		final HashMap<String, Long> finalMap = new HashMap<String, Long>();
+		final String partitionIndexName = groupId + "-" + inputTopicName + "-" + rec.partition();
 		try {
 			Map<TopicPartition, OffsetAndMetadata> consumerGroupOffsets = getOffsetMetadata(groupId);
 			Map<TopicPartition, Long> topicEndOffsets = getPartitionEndOffsets(consumerGroupOffsets.keySet());
@@ -111,15 +91,48 @@ public class ConsumerGroupSourceLag<K, V> {
 				if (lag < 0) {
 					lag = 0;
 				}
-				totalLag = totalLag + lag;
+				finalMap.put(groupId + "-" + inputTopicName + "-" + partitionData.getKey().partition(), lag);
 			}
 
 		} catch (InterruptedException | ExecutionException e) {
 			e.printStackTrace();
 		}
-		return totalLag;
+		return finalMap.containsKey(partitionIndexName) ? finalMap.get(partitionIndexName) : 0L;
 	}
 
+	/**
+	 * @param groupId
+	 * @param inputTopicName
+	 * @return
+	 */
+	public HashMap<String, Long> getTopicPartitionWithZeroLag(final String groupId) {
+
+		final HashMap<String, Long> finalMap = new HashMap<String, Long>();
+		final List<String> sizeList = new ArrayList<String>();
+		try {
+			Map<TopicPartition, OffsetAndMetadata> consumerGroupOffsets = getOffsetMetadata(groupId);
+			Map<TopicPartition, Long> topicEndOffsets = getPartitionEndOffsets(consumerGroupOffsets.keySet());
+			Iterator<Entry<TopicPartition, OffsetAndMetadata>> consumerItr = consumerGroupOffsets.entrySet().iterator();
+			while (consumerItr.hasNext()) {
+				Entry<TopicPartition, OffsetAndMetadata> partitionData = consumerItr.next();
+
+				long lag = topicEndOffsets.get(partitionData.getKey()) - partitionData.getValue().offset();
+				if (lag <= 0) {
+					lag = 0;
+					finalMap.put(partitionData.getKey().topic() + "-" + partitionData.getKey().partition(), lag);
+				}
+				sizeList.add(partitionData.getKey().topic() + "-" + partitionData.getKey().partition());
+			}
+
+		} catch (InterruptedException | ExecutionException e) {
+			e.printStackTrace();
+		}
+		finalMap.put("elementSize", Long.valueOf(sizeList.size()));
+
+		return finalMap;
+	}
+
+	@Deprecated
 	public long getMaxConsumerGroupLag() {
 
 		TreeSet<Long> lagSet = new TreeSet<Long>();
@@ -155,6 +168,7 @@ public class ConsumerGroupSourceLag<K, V> {
 		return lagSet.last();
 	}
 
+	@Deprecated
 	public long getMaxConsumerGroupLag(String exsGroupId) {
 
 		TreeSet<Long> lagSet = new TreeSet<Long>();
@@ -191,4 +205,28 @@ public class ConsumerGroupSourceLag<K, V> {
 		return lagSet.last();
 	}
 
+	/**
+	 * @param groupIdStart
+	 * @return
+	 * @throws InterruptedException
+	 * @throws ExecutionException
+	 */
+	@SuppressWarnings("unused")
+	@Deprecated
+	private Map<TopicPartition, OffsetAndMetadata> getGroupOffsetMetadata(String groupIdStart)
+			throws InterruptedException, ExecutionException {
+		Map<TopicPartition, OffsetAndMetadata> offsetMetadataMap = new HashMap<TopicPartition, OffsetAndMetadata>();
+		Collection<ConsumerGroupListing> allGroupResults = this.client.listConsumerGroups().all().get();
+		Iterator<ConsumerGroupListing> itsGroup = allGroupResults.iterator();
+		while (itsGroup.hasNext()) {
+			ConsumerGroupListing consumerGroupListing = (ConsumerGroupListing) itsGroup.next();
+			String groupId = consumerGroupListing.groupId();
+			if (groupId.startsWith(groupIdStart)) {
+				offsetMetadataMap
+						.putAll(this.client.listConsumerGroupOffsets(groupId).partitionsToOffsetAndMetadata().get());
+			}
+
+		}
+		return offsetMetadataMap;
+	}
 }

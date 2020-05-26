@@ -32,12 +32,12 @@ public class KafkaConfigReader {
 		}
 	}
 
-	/**
-	 * @return
-	 */
-	public String getAppId() {
-		return this.kafkaConfig.getKafka().getAppId();
-	}
+//	/**
+//	 * @return
+//	 */
+//	public String getAppId() {
+//		return this.kafkaConfig.getKafka().getAppId();
+//	}
 
 	/**
 	 * @return
@@ -84,14 +84,14 @@ public class KafkaConfigReader {
 	/**
 	 * @return
 	 */
-	public long getDeltaValue() {
+	public float getDeltaValue() {
 		return this.kafkaConfig.getKafka().getAppDeltaValue();
 	}
 
 	/**
 	 * @return
 	 */
-	public long getSmallDeltaValue() {
+	public float getSmallDeltaValue() {
 		return this.kafkaConfig.getKafka().getAppSmallDeltaValue();
 	}
 
@@ -126,8 +126,19 @@ public class KafkaConfigReader {
 	/**
 	 * @return
 	 */
+	public long getConsumerThreads() {
+		return this.kafkaConfig.getKafka().getNumConsumerThreads();
+	}
+
+	/**
+	 * @return
+	 */
 	public Map<String, String> getTopicFields() {
 		return this.kafkaConfig.getKafka().getTopicsFields();
 	}
 
+	public boolean isZkNodeUpd() {
+		return this.kafkaConfig.getKafka().isZkNodeUpd();
+	}
+	
 }
