@@ -3,7 +3,6 @@ package com.kafka.algo.runners;
 import static com.kafka.algo.runners.constants.Constants.GROUPID_PREFIX;
 
 import java.time.Duration;
-import java.util.HashMap;
 
 import org.apache.kafka.clients.consumer.ConsumerRecord;
 import org.apache.kafka.clients.consumer.ConsumerRecords;
@@ -62,7 +61,7 @@ public class KafkaAlgoAppRunner<K, V> {
 				KafkaConnection.getKafkaProducerProperties(this.configReader));
 		consumer.subscribe(java.util.Arrays.asList(this.inputTopicName));
 
-		final String fieldNameToConsider = this.configReader.getTopicFields().get(this.inputTopicName);
+		final String[] fieldNameToConsider = this.configReader.getTopicFields().get(this.inputTopicName).split(",");
 
 		boolean considerLag = false;
 
@@ -79,9 +78,9 @@ public class KafkaAlgoAppRunner<K, V> {
 
 	private void messageSendRecursive(final ConsumerRecord<K, V> rec, final KafkaProducer<K, V> producer,
 			final ConsumerGroupSourceLag<K, V> consumerLag, final boolean considerLag, final ZkConnect zk,
-			final String fieldNameToConsider, final ConsumerGroupTargetLag<K, V> targetLag) {
+			final String[] fieldNameToConsider, final ConsumerGroupTargetLag<K, V> targetLag) {
 
-		final long recTimestamp = this.fieldSelector.getTimestampFromData(fieldNameToConsider, rec);
+		final long recTimestamp = this.fieldSelector.getTimestampFromData(rec, fieldNameToConsider);
 		final long lag = consumerLag.getConsumerGroupLag(this.groupId, this.inputTopicName, rec);
 		final long maxLag = targetLag.getTargetActiveConsumerLag();
 
