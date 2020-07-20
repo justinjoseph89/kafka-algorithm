@@ -197,7 +197,7 @@ public class ConsumerGroupTargetLag<K, V> {
 				while (consumerItr.hasNext()) {
 					Entry<TopicPartition, OffsetAndMetadata> partitionData = consumerItr.next();
 					final String topicName = partitionData.getKey().topic();
-					if (!topicName.equals(this.inputTopicName + "-temp")) {
+					if (!topicName.equals(this.inputTopicName)) {
 						long lag = topicEndOffsets.get(partitionData.getKey()) - partitionData.getValue().offset();
 						if (lag < 0) {
 							lag = 0;
