@@ -1,0 +1,24 @@
+#please note : no '-' is used
+kafka:
+   bootstrapServers: |
+      192.168.56.101:9092,192.168.56.101:9093
+   bootstrapServersTarget: |
+      192.168.56.101:9092,192.168.56.101:9093
+   zookeeperHost: 192.168.56.101
+   defaultKeySerde: String
+   defaultValueSerde: Avro
+   appVersion: 312 #This will define the version
+   zkNodeUpd: true
+   appDeltaValue: 200
+   appSmallDeltaValue: 100
+   appSleepTimeMs: 10
+   autoOffsetReset: earliest
+   schemaRegistyUrl: http://192.168.56.101:8081/
+   numConsumerThreads: 2
+   topics:
+      input-topics: input-topic-1,input-topic-2
+   topicsFields:
+#       input-topic-1: insert_dt
+#       input-topic-2: upd_dt
+      input-topic-1: default
+      input-topic-2: default
