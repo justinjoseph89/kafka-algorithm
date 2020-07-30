@@ -10,7 +10,7 @@ kafka:
    appVersion: 312 #This will define the version
    zkNodeUpd: true
    appDeltaValue: 200
-   appSmallDeltaValue: 100
+   appSmallDeltaValue: 150
    appSleepTimeMs: 10
    autoOffsetReset: earliest
    schemaRegistyUrl: http://192.168.56.101:8081/
