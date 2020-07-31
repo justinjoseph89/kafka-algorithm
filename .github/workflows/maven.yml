@@ -39,5 +39,7 @@ jobs:
     - run: cat target/kafka-algorithm-jar-with-dependencies.jar
     - name: Build the Docker image
       run: docker build . --file Dockerfile --tag kafka-algorithm:$(date +%s)
+    - name: Push the Docker image
+      run: docker docker push justinjoseph89/kafka-algorithm:$(date +%s)
     - name: Run the Docker image
       run: docker run -d --name=kafka-algo-app kafka-algorithm:$(date +%s)
