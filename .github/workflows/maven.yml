@@ -36,12 +36,14 @@ jobs:
       with:
         name: kafka-algorithm-jar-with-dependencies
         path: target/
+      env:
+        RELEASE_VERSION: $(date +%s) 
     - run: cat target/kafka-algorithm-jar-with-dependencies.jar
     - name: Docker Login
       run: echo '${{ secrets.DOCKERHUB_PASS }}' | docker login --username justinjoseph89 --password-stdin
     - name: Docker Build
-      run: docker build . --file Dockerfile --tag justinjoseph89/kafka-algorithm:$(date +%s)
+      run: docker build . --file Dockerfile --tag justinjoseph89/kafka-algorithm:$RELEASE_VERSION
     - name: Docker Push
-      run: docker push justinjoseph89/kafka-algorithm:$(date +%s)
+      run: docker push justinjoseph89/kafka-algorithm:$RELEASE_VERSION
     - name: Docker Run
-      run: docker run -d --name=kafka-algo-app justinjoseph89/kafka-algorithm:$(date +%s)
+      run: docker run -d --name=kafka-algo-app justinjoseph89/kafka-algorithm:$RELEASE_VERSION
