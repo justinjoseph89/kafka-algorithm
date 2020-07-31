@@ -41,7 +41,7 @@ jobs:
     - name: Env Setup
       env:
         RELEASE_VERSION: $(date +%s)
-    - run: echo $RELEASE_VERSION
+      run: echo $RELEASE_VERSION
     - run: cat target/kafka-algorithm-jar-with-dependencies.jar
     - name: Docker Login
       run: echo '${{ secrets.DOCKERHUB_PASS }}' | docker login --username justinjoseph89 --password-stdin
