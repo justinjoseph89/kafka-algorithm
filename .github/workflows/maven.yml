@@ -37,8 +37,11 @@ jobs:
         name: kafka-algorithm-jar-with-dependencies
         path: target/
     - run: cat target/kafka-algorithm-jar-with-dependencies.jar
-    - name: Docker Run
+    - name: Docker Login
       run: echo '${{ secrets.DOCKERHUB_PASS }}' | docker login --username justinjoseph89 --password-stdin
-           docker build . --file Dockerfile --tag justinjoseph89/kafka-algorithm:$(git rev-parse --short "$GITHUB_SHA")
-           docker push justinjoseph89/kafka-algorithm:$(git rev-parse --short "$GITHUB_SHA")
-           docker run -d --name=kafka-algo-app justinjoseph89/kafka-algorithm:$(git rev-parse --short "$GITHUB_SHA")
+    - name: Docker Build
+      run: docker build . --file Dockerfile --tag justinjoseph89/kafka-algorithm:$(git rev-parse --short "$GITHUB_SHA")
+    - name: Docker Push
+      run: docker push justinjoseph89/kafka-algorithm:$(git rev-parse --short "$GITHUB_SHA")
+    - name: Docker Run
+      run: docker run -d --name=kafka-algo-app justinjoseph89/kafka-algorithm:$(git rev-parse --short "$GITHUB_SHA")
