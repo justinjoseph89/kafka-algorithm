@@ -42,6 +42,6 @@ jobs:
     - name: Docker Login
       run: echo '${{ secrets.DOCKERHUB_PASS }}' | docker login --username justinjoseph89 --password-stdin
     - name: Push the Docker image
-      run: docker docker push justinjoseph89/kafka-algorithm:$(date +%s)
+      run: docker push justinjoseph89/kafka-algorithm:$(date +%s)
     - name: Run the Docker image
       run: docker run -d --name=kafka-algo-app justinjoseph89/kafka-algorithm:$(date +%s)
