@@ -1,3 +1,4 @@
+![Docker Build](https://github.com/justinjoseph89/kafka-algorithm/workflows/Docker%20Build/badge.svg)
 # kafka-algorithm
 
 Create an app to reduce the speed of processing of less data topics compared with the huge topics.
