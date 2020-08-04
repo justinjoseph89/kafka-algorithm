@@ -63,7 +63,7 @@ public class KafkaConnection {
 	 */
 	public static Properties getKafkaProducerProperties(final KafkaConfigReader configReader) {
 		Properties props = new Properties();
-		props.put(ProducerConfig.BOOTSTRAP_SERVERS_CONFIG, configReader.getBootstrapServers());
+		props.put(ProducerConfig.BOOTSTRAP_SERVERS_CONFIG, configReader.getBootstrapTargetServers());
 		props.put(ProducerConfig.KEY_SERIALIZER_CLASS_CONFIG, KafkaSerializers.getKeySerializer(configReader));
 		props.put(ProducerConfig.VALUE_SERIALIZER_CLASS_CONFIG, KafkaSerializers.getValueSerializer(configReader));
 		props.put("schema.registry.url", configReader.getSchemaRegistryUrl());
