@@ -1,20 +1,20 @@
 #please note : no '-' is used
 kafka:
    bootstrapServers: |
-      192.168.56.101:9092,192.168.56.101:9093
+      localhost:9092,localhost:9093
    bootstrapServersTarget: |
-      192.168.56.101:9092,192.168.56.101:9093
-   zookeeperHost: 192.168.56.101
+      localhost:9094,localhost:9095
+   zookeeperHost: localhost
    defaultKeySerde: String
    defaultValueSerde: Avro
-   appVersion: 312 #This will define the version
+   appVersion: 103 #This will define the version
    zkNodeUpd: true
    appDeltaValue: 200
-   appSmallDeltaValue: 150
-   appSleepTimeMs: 10
+   appSmallDeltaValue: 100
+   appSleepTimeMs: 20
    autoOffsetReset: earliest
-   schemaRegistyUrl: http://192.168.56.101:8081/
-   numConsumerThreads: 2
+   schemaRegistyUrl: http://localhost:8081/
+   numConsumerThreads: 4
    topics:
       input-topics: input-topic-1,input-topic-2
    topicsFields:
