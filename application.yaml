@@ -7,14 +7,14 @@ kafka:
    zookeeperHost: localhost
    defaultKeySerde: String
    defaultValueSerde: Avro
-   appVersion: 103 #This will define the version
+   appVersion: 1 #This will define the version
    zkNodeUpd: true
    appDeltaValue: 200
    appSmallDeltaValue: 100
    appSleepTimeMs: 20
    autoOffsetReset: earliest
    schemaRegistyUrl: http://localhost:8081/
-   numConsumerThreads: 4
+   numConsumerThreads: 8
    topics:
       input-topics: input-topic-1,input-topic-2
    topicsFields:

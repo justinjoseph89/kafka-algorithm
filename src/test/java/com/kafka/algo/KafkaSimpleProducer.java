@@ -34,31 +34,61 @@ public class KafkaSimpleProducer {
     final Schema.Parser parser2 = new Schema.Parser();
     final Schema depSchema = parser2.parse(DEPARTMENT_SCHEMA);
 
-    int j = 0;
-    for (int i = 0; i < 100; i++) {
-      j++;
-      System.out.println(i);
+//    int j = 0;
+//    for (int i = 0; i < 1000; i++) {
+//      j++;
+//      System.out.println(i);
+//
+//      GenericRecord customerRec = new GenericData.Record(customerSchema);
+//      customerRec.put("customer_id", String.valueOf(i));
+//      customerRec.put("dep_id", String.valueOf(i));
+//      customerRec.put("customer_name", "Customer-" + String.valueOf(i));
+//      customerRec.put("insert_dt", String.valueOf(new Timestamp(System.currentTimeMillis())));
+//
+//      ProducerRecord<String, GenericRecord> producerRecr = new ProducerRecord<String, GenericRecord>("input-topic-2",
+//          i + "", customerRec);
+//      producer.send(producerRecr);
+//      Thread.sleep(50);
+//      if (j == 10) {
+//        GenericRecord depRec = new GenericData.Record(depSchema);
+//        depRec.put("dep_id", String.valueOf(i));
+//        depRec.put("dep_name", "Dep-" + String.valueOf(i));
+//        depRec.put("upd_dt", String.valueOf(new Timestamp(System.currentTimeMillis())));
+//        ProducerRecord<String, GenericRecord> producerRecr1 = new ProducerRecord<String, GenericRecord>("input-topic-1",
+//            i + "", depRec);
+//        producer.send(producerRecr1);
+//        Thread.sleep(10);
+//        j = 0;
+//      }
+//    }
+//    
+//    Thread.sleep(60000);
 
-      GenericRecord customerRec = new GenericData.Record(customerSchema);
-      customerRec.put("customer_id", String.valueOf(i));
-      customerRec.put("dep_id", String.valueOf(i));
-      customerRec.put("customer_name", "Customer-" + String.valueOf(i));
-      customerRec.put("insert_dt", String.valueOf(new Timestamp(System.currentTimeMillis())));
+    int k = 0;
+    for (int m = 0; m < 100; m++) {
+      k++;
+      System.out.println(m);
 
-      ProducerRecord<String, GenericRecord> producerRecr = new ProducerRecord<String, GenericRecord>("input-topic-2",
-          i + "", customerRec);
-      producer.send(producerRecr);
+      GenericRecord customerRec1 = new GenericData.Record(customerSchema);
+      customerRec1.put("customer_id", String.valueOf(m));
+      customerRec1.put("dep_id", String.valueOf(m));
+      customerRec1.put("customer_name", "Customer-" + String.valueOf(m));
+      customerRec1.put("insert_dt", String.valueOf(new Timestamp(System.currentTimeMillis())));
+
+      ProducerRecord<String, GenericRecord> producerRecr4 = new ProducerRecord<String, GenericRecord>("input-topic-2",
+          m + "", customerRec1);
+      producer.send(producerRecr4);
       Thread.sleep(50);
-      if (j == 10) {
-        GenericRecord depRec = new GenericData.Record(depSchema);
-        depRec.put("dep_id", String.valueOf(i));
-        depRec.put("dep_name", "Dep-" + String.valueOf(i));
-        depRec.put("upd_dt", String.valueOf(new Timestamp(System.currentTimeMillis())));
-        ProducerRecord<String, GenericRecord> producerRecr1 = new ProducerRecord<String, GenericRecord>("input-topic-1",
-            i + "", depRec);
-        producer.send(producerRecr1);
+      if (k == 10) {
+        GenericRecord depRec1 = new GenericData.Record(depSchema);
+        depRec1.put("dep_id", String.valueOf(m));
+        depRec1.put("dep_name", "Dep-" + String.valueOf(m));
+        depRec1.put("upd_dt", String.valueOf(new Timestamp(System.currentTimeMillis())));
+        ProducerRecord<String, GenericRecord> producerRecr3 = new ProducerRecord<String, GenericRecord>("input-topic-1",
+            m + "", depRec1);
+        producer.send(producerRecr3);
         Thread.sleep(10);
-        j = 0;
+        k = 0;
       }
 
     }

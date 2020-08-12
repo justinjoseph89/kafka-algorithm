@@ -3,6 +3,7 @@ package com.kafka.algo.runners.kafkautils;
 import java.util.Properties;
 
 import org.apache.kafka.clients.consumer.ConsumerConfig;
+import org.apache.kafka.clients.consumer.RoundRobinAssignor;
 import org.apache.kafka.clients.producer.ProducerConfig;
 
 import com.kafka.algo.runners.configreader.KafkaConfigReader;
@@ -24,9 +25,11 @@ public class KafkaConnection {
     Properties props = getSharedConsumerProperties(configReader);
     props.put(ConsumerConfig.BOOTSTRAP_SERVERS_CONFIG, configReader.getBootstrapServers());
     props.put(ConsumerConfig.GROUP_ID_CONFIG, consumerID);
-    props.put(ConsumerConfig.MAX_POLL_RECORDS_CONFIG, 10);
+    props.put(ConsumerConfig.MAX_POLL_RECORDS_CONFIG, 1);
     props.put(ConsumerConfig.ENABLE_AUTO_COMMIT_CONFIG, "false");
-//    props.put(ConsumerConfig.PARTITION_ASSIGNMENT_STRATEGY_CONFIG, RoundRobinAssignor.class.getName());
+    props.put(ConsumerConfig.PARTITION_ASSIGNMENT_STRATEGY_CONFIG, RoundRobinAssignor.class.getName());
+//    props.put(ConsumerConfig.SESSION_TIMEOUT_MS_CONFIG, "3600000");
+
     return props;
   }
 

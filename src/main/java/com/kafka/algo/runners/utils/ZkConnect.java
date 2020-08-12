@@ -41,10 +41,12 @@ public class ZkConnect {
    * @param reset
    * @param configReader
    */
-  public ZkConnect(final String topicName, final boolean reset, final KafkaConfigReader configReader) {
+  public ZkConnect(final String topicName, final boolean reset, final KafkaConfigReader configReader,
+      final ZooKeeper zk) {
     this.configReader = configReader;
     this.znodeName = ZNODE_PREFIX + ZNODE_START + configReader.getAppVersion() + "#" + topicName;
-    this.zk = this.connect(configReader.getZookeeperHost());
+//    this.zk = this.connect(configReader.getZookeeperHost());
+    this.zk = zk;
     this.reset = reset;
     createNode(0d, topicName);
   }
@@ -94,8 +96,10 @@ public class ZkConnect {
       try {
         final String znodeUpdated = this.znodeName + "-" + partitionNumber;
         final Stat nodeExistence = zk.exists(znodeUpdated, true);
+        System.out.println(nodeExistence);
         if (nodeExistence != null) {
           if (this.reset = true) {
+            System.out.println(zk.exists(znodeUpdated, true) + "-" + zk.exists(znodeUpdated, true).getVersion());
             zk.delete(znodeUpdated, zk.exists(znodeUpdated, true).getVersion());
             zk.create(znodeUpdated, String.valueOf(d).getBytes(), Ids.OPEN_ACL_UNSAFE, CreateMode.PERSISTENT);
           } else {
